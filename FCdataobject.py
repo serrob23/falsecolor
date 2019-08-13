@@ -97,12 +97,34 @@ class DataObject(object):
             
     def loadH5(self,folder,image_size = None, channel_ID = None):
         
-        data_name = [os.path.join(folder,f) for f in os.listdir(folder) if f.endswith('xml')]
+        data_name = [os.path.join(folder,f) for f in os.listdir(folder) if f.endswith('h5')]
         
-        H5_dataset = hp.File(data_name,'r')
+        H5_dataset = hp.File(data_name[0],'r')
+
+        print(list(H5_dataset.keys()))
         
-        return H5_dataset['dataset'] #or whatever the data is actually called in the xml file
+        return H5_dataset #or whatever the data is actually called in the xml file
         
+    def setupH5data(self,folder=None,dataID = 0):
+
+        self.channel_IDs = ['s00','s01']
+
+        if folder:
+            dataset = self.loadH5(folder)
+
+        else:
+            dataset = self.loadH5(self.directory)
+
+
+        for chan in self.channel_IDs:
+            self.imageSet[chan] = {}
+
+            self.imageSet[chan]['data'] =  dataset['t00000'][chan][str(dataID)]['cells']
+
+            print(self.imageSet[chan]['data'])
+
+
+
     
     def setupProcessing(self,ncpus):
         self.pool = ProcessingPool(ncpus=ncpus)
@@ -110,7 +132,7 @@ class DataObject(object):
     def unloadPool(self):
         self.pool = None
     
-    def processImages(self,runnable_dict, channel_IDs):
+    def processImages(self,runnable_dict, channel_IDs, imageSet = None, singleSet = True):
         """
         Purpose
         -------
@@ -127,28 +149,40 @@ class DataObject(object):
             list of strings which correspond to keys in imageSet dictonary
         
         """
-        to_unload = False
         if self.pool is None:
-            to_unload = True
             self.setupProcessing(ncpus=4)
         
-        processed_images = {}
-            
-        for chan in channel_IDs:
-            print(chan)
-            
-            #data set to be acted upon
-            images = self.imageSet[chan]['data'] 
-            
-            #allows setting of keyword arguments in runnable beforehand as one function for map
-            method = partial(runnable_dict['runnable'],channelID = chan)
-            
-            #map runnable, processed images will be a dictonary with channel IDs as keys
-            #each key is mapped to the corresponding image array
-            processed_images[chan] = numpy.asarray(self.pool.map(method,images))
         
-        if to_unload:
-            #unload pools
-            self.unloadPool()
         
-        return processed_images
+        if singleSet:
+            processed_images = {}
+            for chan in channel_IDs:
+                print(chan)
+                
+                #data set to be acted upon
+                images = self.imageSet[chan]['data'] 
+                
+                #allows setting of keyword arguments in runnable beforehand as one function for map
+                method = partial(runnable_dict['runnable'],channelID = chan)
+                
+                #map runnable, processed images will be a dictonary with channel IDs as keys
+                #each key is mapped to the corresponding image array
+                processed_images[chan] = numpy.asarray(self.pool.map(method,images))
+
+            
+            processed_images = numpy.stack((processed_images[channel_IDs[0]],
+                processed_images[channel_IDs[1]]),axis = -1)
+
+            return processed_images
+
+        elif imageSet is not None:
+            method = partial(runnable_dict['runnable'])
+
+            processed_images = numpy.asarray(self.pool.map(method,imageSet))
+
+            return processed_images
+
+
+
+
+
