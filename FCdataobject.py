@@ -116,12 +116,16 @@ class DataObject(object):
             dataset = self.loadH5(self.directory)
 
 
-        for chan in self.channel_IDs:
-            self.imageSet[chan] = {}
+        # for chan in self.channel_IDs:
+        #     self.imageSet[chan] = {}
 
-            self.imageSet[chan]['data'] =  dataset['t00000'][chan][str(dataID)]['cells']
+        #     self.imageSet[chan]['data'] =  dataset['t00000'][chan][str(dataID)]['cells']
 
-            print(self.imageSet[chan]['data'])
+        #     print(self.imageSet[chan]['data'])
+
+        self.imageSet = numpy.stack((dataset['t00000'][self.channel_IDs[0]][str(dataID)]['cells'],
+            dataset['t00000'][self.channel_IDs[1]][str(dataID)]['cells']),axis=-1)
+        print(self.imageSet.shape)
 
 
 
@@ -153,7 +157,6 @@ class DataObject(object):
             self.setupProcessing(ncpus=4)
         
         
-        
         if singleSet:
             processed_images = {}
             for chan in channel_IDs:
@@ -176,11 +179,12 @@ class DataObject(object):
             return processed_images
 
         elif imageSet is not None:
-            method = partial(runnable_dict['runnable'])
+            processed_images = []
+            method = partial(runnable_dict['runnable'],channelIDs=channel_IDs)
 
-            processed_images = numpy.asarray(self.pool.map(method,imageSet))
+            processed_images.append(self.pool.map(method,imageSet))
 
-            return processed_images
+            return numpy.asarray(processed_images)
 
 
 

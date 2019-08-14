@@ -99,7 +99,7 @@ def combineFalseColoredChannels(input_image,norm_factor = 255,output_dtype = num
     
     
 
-def falseColor(cyto,nuclei,channelIDs,output_dtype=numpy.uint8):
+def falseColor(imageSet,channelIDs,output_dtype=numpy.uint8):
     """
     expects input imageSet data to be structured in the same way as in the FCdataobject
 
@@ -137,8 +137,8 @@ def falseColor(cyto,nuclei,channelIDs,output_dtype=numpy.uint8):
     
     
     
-    nuclei = preProcess(nuclei,channelIDs[0])
-    cyto = preProcess(cyto,channelIDs[1])
+    nuclei = preProcess(imageSet[:,:,0],channelIDs[0])
+    cyto = preProcess(imageSet[:,:,1],channelIDs[1])
 
     RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
     
@@ -169,6 +169,8 @@ def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
     images -= thresh
 
     images = numpy.power(images,0.85)
+
+    # images = numpy.where(images>thresh,images,0)
 
     image_mean = numpy.mean(images[images>thresh])*8
 
