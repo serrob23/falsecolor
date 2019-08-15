@@ -2,7 +2,7 @@
 DataObject for H&E False coloring
 
 Robert Serafin
-8/12/2019
+8/14/2019
 
 """
 
@@ -32,7 +32,7 @@ class DataObject(object):
         directory : string
             Base directory where image data is stored
             
-        imageSet : dict
+        imageSet : dict #TODO: convert to zipped array for tif loading
             default None, if passed the directory structure should be 
             
             imageSet = {'channel_name' : {
@@ -51,7 +51,7 @@ class DataObject(object):
         
         """
         
-        #object base directory
+        # object base directory
         self.directory = directory
         
         
@@ -62,7 +62,7 @@ class DataObject(object):
             self.channel_IDs = []
         
         
-        if imageSet:
+        if imageSet is not None:
             self.imageSet = imageSet
         else:
             self.imageSet = {}
@@ -74,7 +74,7 @@ class DataObject(object):
             self.unloadPool()
                 
     
-    def loadImages(self,file_list,image_size,channel_ID):            
+    def loadTifImages(self,file_list,image_size,channel_ID):            
         try:
             assert(type(image_size == tuple))
             assert(len(image_size) > 0)
@@ -115,20 +115,10 @@ class DataObject(object):
         else:
             dataset = self.loadH5(self.directory)
 
-
-        # for chan in self.channel_IDs:
-        #     self.imageSet[chan] = {}
-
-        #     self.imageSet[chan]['data'] =  dataset['t00000'][chan][str(dataID)]['cells']
-
-        #     print(self.imageSet[chan]['data'])
-
+        #Create imageSet as a 4D array, from the loaded dataset
         self.imageSet = numpy.stack((dataset['t00000'][self.channel_IDs[0]][str(dataID)]['cells'],
             dataset['t00000'][self.channel_IDs[1]][str(dataID)]['cells']),axis=-1)
         print(self.imageSet.shape)
-
-
-
     
     def setupProcessing(self,ncpus):
         self.pool = ProcessingPool(ncpus=ncpus)
@@ -185,8 +175,4 @@ class DataObject(object):
             processed_images.append(self.pool.map(method,imageSet))
 
             return numpy.asarray(processed_images)
-
-
-
-
 
