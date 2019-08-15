@@ -126,53 +126,56 @@ class DataObject(object):
     def unloadPool(self):
         self.pool = None
     
-    def processImages(self,runnable_dict, channel_IDs, imageSet = None, singleSet = True):
-        """
-        Purpose
-        -------
-        Method to batch process multiple images simultaneously. Can process multiple 
-        channels or one at a time. Method acts on Image data within data object. 
-        
-        Attributes
-        ----------
-        
-        runnable_dict : dict
-            Currently should have one key 'runnable' which is mapped to a method to be run
-        
-        channel_IDs : list
-            list of strings which correspond to keys in imageSet dictonary
-        
-        """
-        if self.pool is None:
-            self.setupProcessing(ncpus=4)
-        
-        
-        if singleSet:
-            processed_images = {}
-            for chan in channel_IDs:
-                print(chan)
-                
-                #data set to be acted upon
-                images = self.imageSet[chan]['data'] 
-                
-                #allows setting of keyword arguments in runnable beforehand as one function for map
-                method = partial(runnable_dict['runnable'],channelID = chan)
-                
-                #map runnable, processed images will be a dictonary with channel IDs as keys
-                #each key is mapped to the corresponding image array
-                processed_images[chan] = numpy.asarray(self.pool.map(method,images))
-
+    def processImages(self,runnable_dict, imageSet = None, singleSet = True):
+            """
+            Purpose
+            -------
+            Method to batch process multiple images simultaneously. Can process multiple 
+            channels or one at a time. Method acts on Image data within data object. 
             
-            processed_images = numpy.stack((processed_images[channel_IDs[0]],
-                processed_images[channel_IDs[1]]),axis = -1)
+            Attributes
+            ----------
+            
+            runnable_dict : dict
+                Currently should have one key 'runnable' which is mapped to a method to be run
+            
+            channel_IDs : list
+                list of strings which correspond to keys in imageSet dictonary
+            
+            """
+            if self.pool is None:
+                self.setupProcessing(ncpus=4)
+            
+            runnable,*args = runnable_dict['runnable'],runnable_dict['args']
+            print(runnable,*args,imageSet.shape)
+            method = partial(runnable,*args)
+            
+            
+            if singleSet:
+                processed_images = {}
+                for chan in channel_IDs:
+                    print(chan)
+                    
+                    #data set to be acted upon
+                    images = self.imageSet[chan]['data'] 
+                    
+                    #allows setting of keyword arguments in runnable beforehand as one function for map
+                    method = partial(runnable_dict['runnable'],channelID = chan)
+                    
+                    #map runnable, processed images will be a dictonary with channel IDs as keys
+                    #each key is mapped to the corresponding image array
+                    processed_images[chan] = numpy.asarray(self.pool.map(method,images))
 
-            return processed_images
+                
+                processed_images = numpy.stack((processed_images[channel_IDs[0]],
+                    processed_images[channel_IDs[1]]),axis = -1)
 
-        elif imageSet is not None:
-            processed_images = []
-            method = partial(runnable_dict['runnable'],channelIDs=channel_IDs)
+                return processed_images
 
-            processed_images.append(self.pool.map(method,imageSet))
+            elif imageSet is not None:
+                processed_images = []
+                method = partial(runnable,*args)
 
-            return numpy.asarray(processed_images)
+                processed_images.append(self.pool.map(method,imageSet))
 
+                return numpy.asarray(processed_images)
