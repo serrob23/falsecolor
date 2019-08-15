@@ -99,7 +99,7 @@ def combineFalseColoredChannels(input_image,norm_factor = 255,output_dtype = num
     
     
 
-def falseColor(imageSet,channelIDs,output_dtype=numpy.uint8):
+def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     """
     expects input imageSet data to be structured in the same way as in the FCdataobject
 

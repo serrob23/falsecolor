@@ -146,9 +146,9 @@ class DataObject(object):
             if self.pool is None:
                 self.setupProcessing(ncpus=4)
             
-            runnable,*args = runnable_dict['runnable'],runnable_dict['args']
-            print(runnable,*args,imageSet.shape)
-            method = partial(runnable,*args)
+            runnable,*kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
+            print(runnable,*kwargs,imageSet.shape)
+            method = partial(runnable,*kwargs)
             
             
             if singleSet:
@@ -174,7 +174,7 @@ class DataObject(object):
 
             elif imageSet is not None:
                 processed_images = []
-                method = partial(runnable,*args)
+                method = partial(runnable,*kwargs)
 
                 processed_images.append(self.pool.map(method,imageSet))
 
