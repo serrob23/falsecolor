@@ -181,9 +181,15 @@ def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
     return processed_images
 
 
-def adaptiveThreshold(images, blocksize = 35,offset = 0):
-    binary_img = filt.theshold_adaptive(images,blocksize,offset = offset)
-    return binary_img
+def adaptiveBinary(images, blocksize = 15,offset = 0):
+    if len(images.shape) == 2:
+        binary_img = images > filt.threshold_local(images,blocksize,offset = offset)
+    else:
+        binary_img = numpy.zeros(images.T.shape)
+        for i,z in enumerate(images.T):
+            binary_img[i] = images > filt.threshold_local(z,blocksize,offset=offset)
+        binary_img = binary_img.T
+    return numpy.asarray(binary_img,dtype =int)
 
 def gaussianSmoothing(images,sigma = 3.0):
     return filt.gaussian(images,sigma)

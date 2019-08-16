@@ -22,7 +22,7 @@ import FalseColor_methods
 
 
 class DataObject(object):
-    def __init__(self,directory, imageSet = None, channel_IDs = None, setupPool = False):
+    def __init__(self,directory, imageSet = None, channelIDs = None, setupPool = False):
         """
         Object to store image data in a convienient way for batch processing
         
@@ -41,13 +41,12 @@ class DataObject(object):
                                         }
                         ....}
         
-        channel_IDs : list
+        channelIDs : list
             list of channel names i.e ['channel1','channel2'...]
             used to sort data
         
         setupPool : bool
             setup processing pool
-        
         
         """
         
@@ -56,10 +55,10 @@ class DataObject(object):
         
         
         #channel IDs are expected to be a list
-        if channel_IDs:
-            self.channel_IDs = channel_IDs
+        if channelIDs:
+            self.channelIDs = channelIDs
         else:
-            self.channel_IDs = []
+            self.channelIDs = []
         
         
         if imageSet is not None:
@@ -107,7 +106,7 @@ class DataObject(object):
         
     def setupH5data(self,folder=None,dataID = 0):
 
-        self.channel_IDs = ['s00','s01']
+        self.channelIDs = ['s00','s01']
 
         if folder:
             dataset = self.loadH5(folder)
@@ -116,8 +115,8 @@ class DataObject(object):
             dataset = self.loadH5(self.directory)
 
         #Create imageSet as a 4D array, from the loaded dataset
-        self.imageSet = numpy.stack((dataset['t00000'][self.channel_IDs[0]][str(dataID)]['cells'],
-            dataset['t00000'][self.channel_IDs[1]][str(dataID)]['cells']),axis=-1)
+        self.imageSet = numpy.stack((dataset['t00000'][self.channelIDs[0]][str(dataID)]['cells'],
+            dataset['t00000'][self.channelIDs[1]][str(dataID)]['cells']),axis=-1)
         print(self.imageSet.shape)
     
     def setupProcessing(self,ncpus):
@@ -126,7 +125,7 @@ class DataObject(object):
     def unloadPool(self):
         self.pool = None
     
-    def processImages(self,runnable_dict, imageSet = None, singleSet = True):
+    def processImages(self,runnable_dict, imageSet, dtype = None):
             """
             Purpose
             -------
@@ -138,44 +137,48 @@ class DataObject(object):
             
             runnable_dict : dict
                 Currently should have one key 'runnable' which is mapped to a method to be run
-            
-            channel_IDs : list
-                list of strings which correspond to keys in imageSet dictonary
+                the other key 'kwargs' are the inputs to the method which are different than
+                the method's default parameters
             
             """
             if self.pool is None:
                 self.setupProcessing(ncpus=4)
             
-            runnable,*kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
-            print(runnable,*kwargs,imageSet.shape)
-            method = partial(runnable,*kwargs)
+            func,kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
+            # print(func,kwargs,imageSet.shape)
+ 
+            processed_images = []
+            # method = partial(runnable,**kwargs)
+
+            if type(kwargs) == dict:
+                processed_images.append(self.pool.map(func,imageSet,**kwargs))
             
+            else:
+                processed_images.append(self.pool.map(func,imageSet))
+
+            if dtype is None:
+                return numpy.asarray(processed_images)
             
-            if singleSet:
-                processed_images = {}
-                for chan in channel_IDs:
-                    print(chan)
+            else:
+                return numpy.asarray(processed_images,dtype = dtype)           
+            
+            # if singleSet:
+            #     processed_images = {}
+            #     for chan in channelIDs:
+            #         print(chan)
                     
-                    #data set to be acted upon
-                    images = self.imageSet[chan]['data'] 
+            #         #data set to be acted upon
+            #         images = self.imageSet[chan]['data'] 
                     
-                    #allows setting of keyword arguments in runnable beforehand as one function for map
-                    method = partial(runnable_dict['runnable'],channelID = chan)
+            #         #allows setting of keyword arguments in runnable beforehand as one function for map
+            #         method = partial(runnable_dict['runnable'],channelID = chan)
                     
-                    #map runnable, processed images will be a dictonary with channel IDs as keys
-                    #each key is mapped to the corresponding image array
-                    processed_images[chan] = numpy.asarray(self.pool.map(method,images))
+            #         #map runnable, processed images will be a dictonary with channel IDs as keys
+            #         #each key is mapped to the corresponding image array
+            #         processed_images[chan] = numpy.asarray(self.pool.map(method,images))
 
                 
-                processed_images = numpy.stack((processed_images[channel_IDs[0]],
-                    processed_images[channel_IDs[1]]),axis = -1)
+            #     processed_images = numpy.stack((processed_images[channelIDs[0]],
+            #         processed_images[channelIDs[1]]),axis = -1)
 
-                return processed_images
-
-            elif imageSet is not None:
-                processed_images = []
-                method = partial(runnable,*kwargs)
-
-                processed_images.append(self.pool.map(method,imageSet))
-
-                return numpy.asarray(processed_images)
+            #     return processed_images
