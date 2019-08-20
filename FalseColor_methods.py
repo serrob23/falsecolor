@@ -11,6 +11,7 @@ Robert Serafin
 import os
 import skimage.morphology as morph
 import skimage.filters as filt
+import scipy.ndimage as nd
 import numpy
 import scipy.ndimage as nd
 import skimage.feature as feat
@@ -25,8 +26,8 @@ def denoiseImage(img,*kwargs):
     Denoise image by subtracting laplacian of gaussian
     """
     output_dtype = img.dtype
-    img_gaus = filt.gaussian(img,sigma=3)
-    img_log = filt.laplace(img_gaus) #laplacian filter
+    img_gaus = nd.filters.gaussian_filter(img,sigma=3)
+    img_log = nd.filters.laplace(img_gaus)#laplacian filter
     denoised_img = img - img_log # noise subtraction
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
@@ -183,16 +184,21 @@ def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
 
 def adaptiveBinary(images, blocksize = 15,offset = 0):
     if len(images.shape) == 2:
-        binary_img = images > filt.threshold_local(images,blocksize,offset = offset)
+        filtered_img = medianBlur(images)
+        binary_img = images > filt.threshold_local(filtered_img,blocksize,offset = offset)
     else:
         binary_img = numpy.zeros(images.T.shape)
         for i,z in enumerate(images.T):
-            binary_img[i] = images > filt.threshold_local(z,blocksize,offset=offset)
+            filtered_z = gaussianSmoothing(medianBlur(z))
+            binary_img[i] = z > filt.threshold_local(filtered_z,blocksize,offset=offset)
         binary_img = binary_img.T
     return numpy.asarray(binary_img,dtype =int)
 
 def gaussianSmoothing(images,sigma = 3.0):
-    return filt.gaussian(images,sigma)
+    return nd.filters.gaussian_filter(images,(sigma,sigma))
+
+def medianBlur(images):
+    return nd.filters.median_filter(images,1)
 
 
 
