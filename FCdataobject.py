@@ -145,7 +145,7 @@ class DataObject(object):
                 self.setupProcessing(ncpus=4)
             
             func,kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
-            # print(func,kwargs,imageSet.shape)
+            print(func,kwargs,imageSet.shape)
  
             processed_images = []
             # method = partial(runnable,**kwargs)
@@ -160,25 +160,5 @@ class DataObject(object):
                 return numpy.asarray(processed_images)
             
             else:
-                return numpy.asarray(processed_images,dtype = dtype)           
-            
-            # if singleSet:
-            #     processed_images = {}
-            #     for chan in channelIDs:
-            #         print(chan)
-                    
-            #         #data set to be acted upon
-            #         images = self.imageSet[chan]['data'] 
-                    
-            #         #allows setting of keyword arguments in runnable beforehand as one function for map
-            #         method = partial(runnable_dict['runnable'],channelID = chan)
-                    
-            #         #map runnable, processed images will be a dictonary with channel IDs as keys
-            #         #each key is mapped to the corresponding image array
-            #         processed_images[chan] = numpy.asarray(self.pool.map(method,images))
+                return numpy.asarray(processed_images,dtype = dtype)
 
-                
-            #     processed_images = numpy.stack((processed_images[channelIDs[0]],
-            #         processed_images[channelIDs[1]]),axis = -1)
-
-            #     return processed_images

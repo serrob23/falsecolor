@@ -199,8 +199,3 @@ def gaussianSmoothing(images,sigma = 3.0):
 
 def medianBlur(images):
     return nd.filters.median_filter(images,1)
-
-
-
-
-
