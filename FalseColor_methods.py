@@ -44,7 +44,7 @@ def unpadImages(img,*kwargs):
     newimg = img[voff:-voff:1,hoff:-hoff:1]
     return newimg.astype(output_dtype)
 
-def singleChannel_falseColor(input_image,channelID,output_dtype = numpy.uint8):
+def singleChannel_falseColor(input_image,channelID='s0',output_dtype = numpy.uint8):
     """
     single channel false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
