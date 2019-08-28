@@ -2,7 +2,7 @@
 DataObject for H&E False coloring
 
 Robert Serafin
-8/12/2019
+8/14/2019
 
 """
 
@@ -22,7 +22,7 @@ import FalseColor_methods
 
 
 class DataObject(object):
-    def __init__(self,directory, imageSet = None, channel_IDs = None, setupPool = False):
+    def __init__(self,directory, imageSet = None, channelIDs = None, setupPool = False):
         """
         Object to store image data in a convienient way for batch processing
         
@@ -32,7 +32,7 @@ class DataObject(object):
         directory : string
             Base directory where image data is stored
             
-        imageSet : dict
+        imageSet : dict #TODO: convert to zipped array for tif loading
             default None, if passed the directory structure should be 
             
             imageSet = {'channel_name' : {
@@ -41,28 +41,27 @@ class DataObject(object):
                                         }
                         ....}
         
-        channel_IDs : list
+        channelIDs : list
             list of channel names i.e ['channel1','channel2'...]
             used to sort data
         
         setupPool : bool
             setup processing pool
         
-        
         """
         
-        #object base directory
+        # object base directory
         self.directory = directory
         
         
         #channel IDs are expected to be a list
-        if channel_IDs:
-            self.channel_IDs = channel_IDs
+        if channelIDs:
+            self.channelIDs = channelIDs
         else:
-            self.channel_IDs = []
+            self.channelIDs = []
         
         
-        if imageSet:
+        if imageSet is not None:
             self.imageSet = imageSet
         else:
             self.imageSet = {}
@@ -74,7 +73,7 @@ class DataObject(object):
             self.unloadPool()
                 
     
-    def loadImages(self,file_list,image_size,channel_ID):            
+    def loadTifImages(self,file_list,image_size,channel_ID):            
         try:
             assert(type(image_size == tuple))
             assert(len(image_size) > 0)
@@ -107,7 +106,7 @@ class DataObject(object):
         
     def setupH5data(self,folder=None,dataID = 0):
 
-        self.channel_IDs = ['s00','s01']
+        self.channelIDs = ['s00','s01']
 
         if folder:
             dataset = self.loadH5(folder)
@@ -115,20 +114,13 @@ class DataObject(object):
         else:
             dataset = self.loadH5(self.directory)
 
-
-        # for chan in self.channel_IDs:
-        #     self.imageSet[chan] = {}
-
-        #     self.imageSet[chan]['data'] =  dataset['t00000'][chan][str(dataID)]['cells']
-
-        #     print(self.imageSet[chan]['data'])
-
-        self.imageSet = numpy.stack((dataset['t00000'][self.channel_IDs[0]][str(dataID)]['cells'],
-            dataset['t00000'][self.channel_IDs[1]][str(dataID)]['cells']),axis=-1)
+        #Create imageSet as a 4D array, from the loaded dataset
+        imageData = numpy.stack((dataset['t00000'][self.channelIDs[0]][str(dataID)]['cells'],
+            dataset['t00000'][self.channelIDs[1]][str(dataID)]['cells']),axis=-1)
+        
+        self.imageSet = numpy.moveaxis(imageData,0,1)
         print(self.imageSet.shape)
-
-
-
+        imageData = None
     
     def setupProcessing(self,ncpus):
         self.pool = ProcessingPool(ncpus=ncpus)
@@ -136,57 +128,40 @@ class DataObject(object):
     def unloadPool(self):
         self.pool = None
     
-    def processImages(self,runnable_dict, channel_IDs, imageSet = None, singleSet = True):
-        """
-        Purpose
-        -------
-        Method to batch process multiple images simultaneously. Can process multiple 
-        channels or one at a time. Method acts on Image data within data object. 
-        
-        Attributes
-        ----------
-        
-        runnable_dict : dict
-            Currently should have one key 'runnable' which is mapped to a method to be run
-        
-        channel_IDs : list
-            list of strings which correspond to keys in imageSet dictonary
-        
-        """
-        if self.pool is None:
-            self.setupProcessing(ncpus=4)
-        
-        
-        if singleSet:
-            processed_images = {}
-            for chan in channel_IDs:
-                print(chan)
-                
-                #data set to be acted upon
-                images = self.imageSet[chan]['data'] 
-                
-                #allows setting of keyword arguments in runnable beforehand as one function for map
-                method = partial(runnable_dict['runnable'],channelID = chan)
-                
-                #map runnable, processed images will be a dictonary with channel IDs as keys
-                #each key is mapped to the corresponding image array
-                processed_images[chan] = numpy.asarray(self.pool.map(method,images))
-
+    def processImages(self,runnable_dict, imageSet, dtype = None):
+            """
+            Purpose
+            -------
+            Method to batch process multiple images simultaneously. Can process multiple 
+            channels or one at a time. Method acts on Image data within data object. 
             
-            processed_images = numpy.stack((processed_images[channel_IDs[0]],
-                processed_images[channel_IDs[1]]),axis = -1)
-
-            return processed_images
-
-        elif imageSet is not None:
+            Attributes
+            ----------
+            
+            runnable_dict : dict
+                Currently should have one key 'runnable' which is mapped to a method to be run
+                the other key 'kwargs' are the inputs to the method which are different than
+                the method's default parameters
+            
+            """
+            if self.pool is None:
+                self.setupProcessing(ncpus=4)
+            
+            func,kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
+            print(func,kwargs,imageSet.shape)
+ 
             processed_images = []
-            method = partial(runnable_dict['runnable'],channelIDs=channel_IDs)
+            # method = partial(runnable,**kwargs)
 
-            processed_images.append(self.pool.map(method,imageSet))
+            if type(kwargs) == dict:
+                processed_images.append(self.pool.map(func,imageSet,**kwargs))
+            
+            else:
+                processed_images.append(self.pool.map(func,imageSet))
 
-            return numpy.asarray(processed_images)
-
-
-
-
+            if dtype is None:
+                return numpy.asarray(processed_images)
+            
+            else:
+                return numpy.asarray(processed_images,dtype = dtype)
 

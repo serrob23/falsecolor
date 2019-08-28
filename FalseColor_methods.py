@@ -11,6 +11,10 @@ Robert Serafin
 import os
 import skimage.morphology as morph
 import skimage.filters as filt
+import skimage.exposure as ex
+import skimage.util as uitl
+import scipy.ndimage as nd
+import cv2
 import numpy
 import scipy.ndimage as nd
 import skimage.feature as feat
@@ -25,8 +29,8 @@ def denoiseImage(img,*kwargs):
     Denoise image by subtracting laplacian of gaussian
     """
     output_dtype = img.dtype
-    img_gaus = filt.gaussian(img,sigma=3)
-    img_log = filt.laplace(img_gaus) #laplacian filter
+    img_gaus = nd.filters.gaussian_filter(img,sigma=3)
+    img_log = nd.filters.laplace(img_gaus)#laplacian filter
     denoised_img = img - img_log # noise subtraction
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
@@ -43,7 +47,7 @@ def unpadImages(img,*kwargs):
     newimg = img[voff:-voff:1,hoff:-hoff:1]
     return newimg.astype(output_dtype)
 
-def singleChannel_falseColor(input_image,channelID,output_dtype = numpy.uint8):
+def singleChannel_falseColor(input_image,channelID='s0',output_dtype = numpy.uint8):
     """
     single channel false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
@@ -99,7 +103,7 @@ def combineFalseColoredChannels(input_image,norm_factor = 255,output_dtype = num
     
     
 
-def falseColor(imageSet,channelIDs,output_dtype=numpy.uint8):
+def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     """
     expects input imageSet data to be structured in the same way as in the FCdataobject
 
@@ -112,8 +116,8 @@ def falseColor(imageSet,channelIDs,output_dtype=numpy.uint8):
                               'B' : 0.860,
                               'thresh' : 500},
                 's01' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
+                              'R' : 0.30,
+                              'G' : 1.0,
                               'B' : 0.860,
                               'thresh' : 500},
                  'nuclei' : {'K' : 0.017,
@@ -128,22 +132,16 @@ def falseColor(imageSet,channelIDs,output_dtype=numpy.uint8):
                              'thresh' : 50}}
 
     constants_nuclei = beta_dict[channelIDs[0]]
-
     k_nuclei = constants_nuclei['K']
 
     constants_cyto = beta_dict[channelIDs[1]]
-
     k_cytoplasm= constants_cyto['K']
-    
-    
-    
+     
     nuclei = preProcess(imageSet[:,:,0],channelIDs[0])
     cyto = preProcess(imageSet[:,:,1],channelIDs[1])
 
     RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
-    
-    
-    
+      
     R = numpy.multiply(numpy.exp(-constants_cyto['R']*k_cytoplasm*cyto),
                                     numpy.exp(-constants_nuclei['R']*k_nuclei*nuclei))
 
@@ -170,15 +168,52 @@ def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
 
     images = numpy.power(images,0.85)
 
-    # images = numpy.where(images>thresh,images,0)
-
     image_mean = numpy.mean(images[images>thresh])*8
 
     processed_images = images*(65535/image_mean)*(255/65535)
 
-    processed_images[processed_images < 0] = 0
+    processed_images[processed_images < 0] = 1
 
     return processed_images
 
+def adaptiveBinary(images, blocksize = 15,offset = 0):
+    if len(images.shape) == 2:
+        filtered_img = medianBlur(images)
+        binary_img = images > filt.threshold_local(filtered_img,blocksize,offset = offset)
+    else:
+        binary_img = numpy.zeros(images.T.shape)
+        for i,z in enumerate(images.T):
+            filtered_z = gaussianSmoothing(medianBlur(z))
+            binary_img[i] = z > filt.threshold_local(filtered_z,blocksize,offset=offset)
+        binary_img = binary_img.T
+    return numpy.asarray(binary_img,dtype =int)
 
+def gaussianSmoothing(images,sigma = 3.0):
+    return nd.filters.gaussian_filter(images,(sigma,sigma))
 
+def medianBlur(images):
+    return nd.filters.median_filter(images,1)
+
+def make_blocks_vectorized(x,d,block_depth = 8):
+    p,m,n = x.shape
+    print(p)
+    #reshape into smaller 3D arrays 
+    blocks =  x.reshape(-1,m//d,d,n//d,d).transpose(1,3,0,2,4).reshape(-1,p,d,d)
+    block_set = []
+    for j in range(len(blocks)):
+        for i in range(p//block_depth):
+            #chunk arrays into workable pieces
+            block_set.append(blocks[j,i*block_depth:(i+1)*block_depth,:,:])
+    return block_set
+
+def unmake_blocks_vectorized(x,d,m,n):    
+    return np.concatenate(x).reshape(m//d,n//d,d,d).transpose(0,2,1,3).reshape(m,n)
+
+def tophat_filter(image):
+    el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(51,51))
+    return cv2.morphologyEx(image,cv2.MORPH_TOPHAT,el)
+
+def filter_and_equalize(Image,kernel_size = 204):
+    z = tophat_filter(Image)
+    z = ex.equalize_adapthist(z,kernel_size=kernel_size)
+    return util.img_as_uint(z)
