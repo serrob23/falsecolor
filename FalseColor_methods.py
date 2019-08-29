@@ -166,13 +166,15 @@ def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
     thresh = channel_parameters[channelID]['thresh']
     images -= thresh
 
+    images[images < 0] = 0
+
     images = numpy.power(images,0.85)
 
     image_mean = numpy.mean(images[images>thresh])*8
 
     processed_images = images*(65535/image_mean)*(255/65535)
 
-    processed_images[processed_images < 0] = 1
+    
 
     return processed_images
 
