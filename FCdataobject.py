@@ -22,14 +22,15 @@ import FalseColor_methods
 
 
 class DataObject(object):
-    def __init__(self,directory, imageSet = None, channelIDs = None, setupPool = False):
+    def __init__(self, directory, imageSet = None,
+                 setupPool = False, ncpus = 2):
         """
         Object to store image data in a convienient way for batch processing
         
         Attributes
         ----------
         
-        directory : string
+        directory : string or pathlike
             Base directory where image data is stored
             
         imageSet : dict #TODO: convert to zipped array for tif loading
@@ -41,10 +42,6 @@ class DataObject(object):
                                         }
                         ....}
         
-        channelIDs : list
-            list of channel names i.e ['channel1','channel2'...]
-            used to sort data
-        
         setupPool : bool
             setup processing pool
         
@@ -52,15 +49,7 @@ class DataObject(object):
         
         # object base directory
         self.directory = directory
-        
-        
-        #channel IDs are expected to be a list
-        if channelIDs:
-            self.channelIDs = channelIDs
-        else:
-            self.channelIDs = []
-        
-        
+              
         if imageSet is not None:
             self.imageSet = imageSet
         else:
@@ -68,7 +57,7 @@ class DataObject(object):
         
         
         if setupPool:
-            self.setupProcessing(ncpus = 2)
+            self.setupProcessing(ncpus = ncpus)
         else:
             self.unloadPool()
                 
@@ -104,9 +93,10 @@ class DataObject(object):
         
         return H5_dataset #or whatever the data is actually called in the xml file
         
-    def setupH5data(self,folder=None,dataID = 0):
+    def setupH5data(self,folder=None,dataID = 0,channelIDs = None):
 
-        self.channelIDs = ['s00','s01']
+        if channelIDs is None:
+            channelIDs = ['s00','s01']
 
         if folder:
             dataset = self.loadH5(folder)
@@ -115,8 +105,8 @@ class DataObject(object):
             dataset = self.loadH5(self.directory)
 
         #Create imageSet as a 4D array, from the loaded dataset
-        imageData = numpy.stack((dataset['t00000'][self.channelIDs[0]][str(dataID)]['cells'],
-            dataset['t00000'][self.channelIDs[1]][str(dataID)]['cells']),axis=-1)
+        imageData = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
+            dataset['t00000'][channelIDs[1]][str(dataID)]['cells']),axis=-1)
         
         self.imageSet = numpy.moveaxis(imageData,0,1)
         print(self.imageSet.shape)
