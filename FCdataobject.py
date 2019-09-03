@@ -83,15 +83,19 @@ class DataObject(object):
         except AssertionError:
             print('Image_size must be tuple of form (m,n) where m and n are integers')
             
-    def loadH5(self,folder,image_size = None, channel_ID = None):
+    def loadH5(self,folder,image_size = None,return_as_property=False):
         
         data_name = [os.path.join(folder,f) for f in os.listdir(folder) if f.endswith('h5')]
         
         H5_dataset = hp.File(data_name[0],'r')
 
         print(list(H5_dataset.keys()))
-        
-        return H5_dataset #or whatever the data is actually called in the xml file
+
+        if return_as_property:
+            self.H5_dataset = H5_dataset
+
+        else:
+            return H5_dataset
         
     def setupH5data(self,folder=None,dataID = 0,channelIDs = None):
 
