@@ -106,28 +106,18 @@ def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     expects input imageSet data to be structured in the same way as in the FCdataobject
 
     """
-    # print(type(imageSet))
-
-    beta_dict = {'cytoplasm' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
-                              'B' : 0.860,
-                              'thresh' : 500},
-                's01' : {'K' : 0.008,
-                              'R' : 0.30,
-                              'G' : 1.0,
-                              'B' : 0.860,
-                              'thresh' : 500},
-                 'nuclei' : {'K' : 0.017,
+    beta_dict = {'s00' : {'K' : 0.017,
                              'R' : 0.544,
                              'G' : 1.000,
                              'B' : 0.050,
                              'thresh' : 50},
-                's00' : {'K' : 0.017,
-                             'R' : 0.544,
-                             'G' : 1.000,
-                             'B' : 0.050,
-                             'thresh' : 50}}
+                             
+                's01' : {'K' : 0.008,
+                              'R' : 0.30,
+                              'G' : 1.0,
+                              'B' : 0.860,
+                              'thresh' : 500}
+                              }
 
     constants_nuclei = beta_dict[channelIDs[0]]
     k_nuclei = constants_nuclei['K']
@@ -135,8 +125,8 @@ def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     constants_cyto = beta_dict[channelIDs[1]]
     k_cytoplasm= constants_cyto['K']
      
-    nuclei = preProcess(imageSet[:,:,0],channelIDs[0])
-    cyto = preProcess(imageSet[:,:,1],channelIDs[1])
+    nuclei = preProcess(imageSet[:,:,0])
+    cyto = preProcess(imageSet[:,:,1])
 
     RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
       
@@ -154,25 +144,29 @@ def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
-def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
+def preProcess(image, thresh = 50):
+    """
+    image : 2d numpy array
+        image for processing
 
-    channel_parameters = {'s00' : {'thresh' : 50},
-                          's01' : {'thresh' : 50}}
+    threshold : int
+        background level to subtract
+    """
 
+      #background subtraction
+      image -= thresh
 
-    #parameters for background subtraction
-    thresh = channel_parameters[channelID]['thresh']
-    images -= thresh
+      #no negative values
+      image[image < 0] = 0
 
-    images[images < 0] = 0
+      #calculate normalization factor
+      images = numpy.power(images,0.85)
+      image_mean = numpy.mean(images[images>thresh])*8
 
-    images = numpy.power(images,0.85)
+      #convert into 8bit range
+      processed_images = images*(65535/image_mean)*(255/65535)
 
-    image_mean = numpy.mean(images[images>thresh])*8
-
-    processed_images = images*(65535/image_mean)*(255/65535)
-
-    return processed_images
+      return processed_images
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
