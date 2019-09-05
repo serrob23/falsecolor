@@ -9,6 +9,8 @@ Robert Serafin
 
 
 import os
+import scipy.ndimage as nd
+import skimage.feature as feat
 import skimage.morphology as morph
 import skimage.filters as filt
 import skimage.exposure as ex
@@ -16,13 +18,9 @@ import skimage.util as uitl
 import scipy.ndimage as nd
 import cv2
 import numpy
-import scipy.ndimage as nd
-import skimage.feature as feat
-from functools import partial
-import glob
-import time
 import h5py as hp
-import FalseColor_methods
+from numba import cuda
+from math import exp, ceil
 
 def denoiseImage(img,*kwargs):
     """
@@ -174,9 +172,131 @@ def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
 
     processed_images = images*(65535/image_mean)*(255/65535)
 
-    
-
     return processed_images
+
+@cuda.jit #direct GPU compiling
+def rapid_preProcess(image,background,norm_factor,output):
+    """Background subtraction optimized for gpu
+
+    image : 2d numpy array, dtype = int16
+        image for background subtraction
+
+    background : int
+        constant for subtraction
+
+    norm_factor : int
+        empirically determaned constant for normalization after subtraction
+
+    output : 2d numpy array
+        numpy array of zeros for gpu to assign values to
+
+    """
+
+    #create iterator for gpu  
+    row,col = cuda.grid(2)
+
+    #cycle through image shape and assign values
+    if row < output.shape[0] and col < output.shape[1]:
+
+        #subtract background and raise to factor
+        tmp = (image[row,col] - background)**0.85
+
+        #normalize to 8bit range
+        tmp = image[row,col]*(65535/norm_factor)*(255/65535)
+
+        #remove negative values
+        if tmp < 0:
+            output[row,col] = 0
+        if tmp > 255: #currently saturated pixels will be set to maximum 8bit level
+            output[row,col] = 255
+
+@cuda.jit #direct GPU compiling
+def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyt_settings):
+  """
+    nuclei : numpy.array
+        nuclear channel image
+        already pre processed
+
+    cyto : numpy.array
+        cyto channel image
+        already pre processed
+        
+    nuc_settings : float
+        RGB constant for nuclear channel
+    
+    cyt_settings : float
+        RGB constant for cyto channel
+  """
+    row,col = cuda.grid(2)
+
+    if row < output.shape[0] and col < output.shape[1]:
+        tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyt_settings
+        output[row,col] = 255*exp(-1*tmp)
+
+
+def rapidFalseColor(nuclei, cyto, nuc_settings, cyt_settings,
+                   TPB=(32,32) ,nuc_normfactor = 8500, cyto_normfactor=3000):
+    """
+    nuclei : numpy.array
+        nuclear channel image
+        already pre processed
+        
+    cyto : numpy.array
+        cyto channel image
+        already pre processed
+        
+    nuc_settings : list
+        settings of RGB constants for nuclear channel
+    
+    cyt_settings : list
+        settings of RGB constants for cyto channel
+
+    nuc_normfactor : int
+        defaults to empirically determined constant for background subtraction,
+        will change in the future
+
+    cyto_normfactor : int
+        defaults to empirically determined constant for background subtraction,
+        will change in the future
+        
+    TPB : tuple (int,int)
+        THREADS PER BLOCK: (x_threads,y_threads)
+        used for GPU threads
+    
+    """
+    blockspergrid_x = int(math.ceil(nuclei.shape[0] / threadsperblock[0]))
+    blockspergrid_y = int(math.ceil(nuclei.shape[1] / threadsperblock[1]))
+    blockspergrid = (blockspergrid_x, blockspergrid_y)
+    
+    
+    #run background subtraction for nuclei
+    pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape))
+    nuc_global_mem = cuda.to_device(nuclei)
+    preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_norm,nuc_output_global)
+    
+    #run background subtraction for cyto
+    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
+    cyto_global_mem = cuda.to_device(cyto)
+    preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_norm,pre_cyto_output)
+    
+    
+    #create output array to iterate through
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1])) 
+
+
+    #iterate through output array and assign values based on RGB settings
+    for i,z in enumerate(RGB_image):
+        #allocate memory for output on GPU
+        output_global = cuda.to_device(numpy.zeros(z.shape)) 
+        nuclei_global = cuda.to_device(nuclei)
+        cyto_global = cuda.to_device(cyto)
+
+        rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
+                                                nuc_settings[i],cyt_settings[i])
+        
+        RGB_image[i] = output_global.copy_to_host()
+    RGB_image = numpy.moveaxis(RGB_image,0,-1)
+    return RGB_image.astype(numpy.uint8)
 
 def adaptiveBinary(images, blocksize = 15,offset = 0):
     if len(images.shape) == 2:
@@ -209,7 +329,7 @@ def make_blocks_vectorized(x,d,block_depth = 8):
     return block_set
 
 def unmake_blocks_vectorized(x,d,m,n):    
-    return np.concatenate(x).reshape(m//d,n//d,d,d).transpose(0,2,1,3).reshape(m,n)
+    return numpy.concatenate(x).reshape(m//d,n//d,d,d).transpose(0,2,1,3).reshape(m,n)
 
 def tophat_filter(image):
     el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(51,51))
@@ -218,4 +338,5 @@ def tophat_filter(image):
 def filter_and_equalize(Image,kernel_size = 204):
     z = tophat_filter(Image)
     z = ex.equalize_adapthist(z,kernel_size=kernel_size)
+
     return util.img_as_uint(z)
