@@ -264,7 +264,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     rapid_preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_normfactor,pre_cyto_output)
     
     #create output array to iterate through
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1])) 
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]),dtype = numpy.int8) 
 
     #iterate through output array and assign values based on RGB settings
     for i,z in enumerate(RGB_image):
@@ -278,7 +278,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         
         RGB_image[i] = output_global.copy_to_host()
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
-    return RGB_image.astype(numpy.uint8)
+    return RGB_image
 
 def adaptiveBinary(images, blocksize = 15,offset = 0):
     if len(images.shape) == 2:
