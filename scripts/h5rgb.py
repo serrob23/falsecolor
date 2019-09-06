@@ -3,7 +3,6 @@ import tables as tb
 from skimage.external import tifffile
 from skimage.exposure import equalize_adapthist
 from skimage.filters  import gaussian
-import os.path
 import os
 import h5py as h5
 import numpy as np
@@ -11,6 +10,7 @@ import multiprocessing as mp
 from functools import partial
 import scipy.ndimage
 from scipy import signal
+import FalseColor.Color as fc
 
 def main():
 
