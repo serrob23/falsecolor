@@ -151,13 +151,13 @@ def preProcess(image, thresh = 50):
     image[image < 0] = 0
 
     #calculate normalization factor
-    images = numpy.power(images,0.85)
-    image_mean = numpy.mean(images[images>thresh])*8
+    image = numpy.power(image,0.85)
+    image_mean = numpy.mean(image[image>thresh])*8
 
     #convert into 8bit range
-    processed_images = images*(65535/image_mean)*(255/65535)
+    processed_image = image*(65535/image_mean)*(255/65535)
 
-    return processed_images
+    return processed_image
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
@@ -187,7 +187,7 @@ def rapid_preProcess(image,background,norm_factor,output):
 
         #normalize to 8bit range
         tmp = image[row,col]*(65535/norm_factor)*(255/65535)
-
+        output[row,col] =tmp
         #remove negative values
         if tmp < 0:
             output[row,col] = 0
@@ -253,15 +253,15 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     blockspergrid = (blockspergrid_x, blockspergrid_y)
     
     #run background subtraction for nuclei
-    nuclei = numpy.ascontiguousarray(nuclei)
-    pre_nuc_output = numpy.zeros(nuclei.shape)
+    nuclei = numpy.ascontiguousarray(nuclei,dtype=numpy.int16)
+    pre_nuc_output = numpy.zeros(nuclei.shape,dtype=numpy.int16)
     pre_nuc_output = cuda.to_device(pre_nuc_output)
     nuc_global_mem = cuda.to_device(nuclei)
     rapid_preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_normfactor,pre_nuc_output)
     
     #run background subtraction for cyto
-    cyto = numpy.ascontiguousarray(cyto)
-    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
+    cyto = numpy.ascontiguousarray(cyto,dtype=numpy.int16)
+    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape,dtype=numpy.int16))
     cyto_global_mem = cuda.to_device(cyto)
     rapid_preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_normfactor,pre_cyto_output)
     
