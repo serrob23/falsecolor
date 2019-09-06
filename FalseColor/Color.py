@@ -20,7 +20,7 @@ import cv2
 import numpy
 import h5py as hp
 from numba import cuda
-from math
+import math
 
 def denoiseImage(img):
     """
@@ -247,8 +247,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
 
     #create blockgrid for gpu
-    blockspergrid_x = int(math.ceil(nuclei.shape[0] / threadsperblock[0]))
-    blockspergrid_y = int(math.ceil(nuclei.shape[1] / threadsperblock[1]))
+    blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
+    blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
     blockspergrid = (blockspergrid_x, blockspergrid_y)
     
     #run background subtraction for nuclei
