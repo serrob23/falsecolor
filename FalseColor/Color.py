@@ -20,7 +20,7 @@ import cv2
 import numpy
 import h5py as hp
 from numba import cuda
-from math import exp, ceil
+import math
 
 def denoiseImage(img):
     """
@@ -151,13 +151,13 @@ def preProcess(image, thresh = 50):
     image[image < 0] = 0
 
     #calculate normalization factor
-    images = numpy.power(images,0.85)
-    image_mean = numpy.mean(images[images>thresh])*8
+    image = numpy.power(image,0.85)
+    image_mean = numpy.mean(image[image>thresh])*8
 
     #convert into 8bit range
-    processed_images = images*(65535/image_mean)*(255/65535)
+    processed_image = image*(65535/image_mean)*(255/65535)
 
-    return processed_images
+    return processed_image
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
@@ -187,12 +187,10 @@ def rapid_preProcess(image,background,norm_factor,output):
 
         #normalize to 8bit range
         tmp = image[row,col]*(65535/norm_factor)*(255/65535)
-
+        output[row,col] =tmp
         #remove negative values
         if tmp < 0:
             output[row,col] = 0
-        if tmp > 255: #currently saturated pixels will be set to maximum 8bit level
-            output[row,col] = 255
 
 @cuda.jit #direct GPU compiling
 def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
@@ -215,7 +213,7 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
 
     if row < output.shape[0] and col < output.shape[1]:
         tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyto_settings
-        output[row,col] = 255*exp(-1*tmp)
+        output[row,col] = 255*math.exp(-1*tmp)
 
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
@@ -247,19 +245,23 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
 
     #create blockgrid for gpu
-    blockspergrid_x = int(math.ceil(nuclei.shape[0] / threadsperblock[0]))
-    blockspergrid_y = int(math.ceil(nuclei.shape[1] / threadsperblock[1]))
+    
+    blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
+    blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
     blockspergrid = (blockspergrid_x, blockspergrid_y)
     
     #run background subtraction for nuclei
-    pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape))
+    nuclei = numpy.ascontiguousarray(nuclei,dtype=numpy.int16)
+    pre_nuc_output = numpy.zeros(nuclei.shape,dtype=numpy.int16)
+    pre_nuc_output = cuda.to_device(pre_nuc_output)
     nuc_global_mem = cuda.to_device(nuclei)
-    preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_norm,nuc_output_global)
+    rapid_preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_normfactor,pre_nuc_output)
     
     #run background subtraction for cyto
-    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
+    cyto = numpy.ascontiguousarray(cyto,dtype=numpy.int16)
+    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape,dtype=numpy.int16))
     cyto_global_mem = cuda.to_device(cyto)
-    preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_norm,pre_cyto_output)
+    rapid_preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_normfactor,pre_cyto_output)
     
     #create output array to iterate through
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1])) 
@@ -268,8 +270,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     for i,z in enumerate(RGB_image):
         #allocate memory for output on GPU
         output_global = cuda.to_device(numpy.zeros(z.shape)) 
-        nuclei_global = cuda.to_device(nuclei)
-        cyto_global = cuda.to_device(cyto)
+        nuclei_global = cuda.to_device(pre_nuc_output)
+        cyto_global = cuda.to_device(pre_cyto_output)
 
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
                                                 nuc_settings[i],cyto_settings[i])
