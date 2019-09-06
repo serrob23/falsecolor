@@ -1,2 +1,2 @@
-from .FalseColor_methods import *
+from .Color import *
 from .FCdataobject import *

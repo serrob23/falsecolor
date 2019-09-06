@@ -3,7 +3,7 @@
 Methods for H&E False coloring
 
 Robert Serafin
-8/12/2019
+9/5/2019
 
 """
 
@@ -22,7 +22,7 @@ import h5py as hp
 from numba import cuda
 from math import exp, ceil
 
-def denoiseImage(img,*kwargs):
+def denoiseImage(img):
     """
     Denoise image by subtracting laplacian of gaussian
     """
@@ -33,13 +33,13 @@ def denoiseImage(img,*kwargs):
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
 
-def padImages(img,*kwargs):
+def padImages(img):
     hoff,voff = 35,3
     output_dtype = img.dtype
     newimg = numpy.pad(img,((voff,voff),(hoff,hoff)),'constant',constant_values = 0)
     return newimg.astype(output_dtype)
 
-def unpadImages(img,*kwargs):
+def unpadImages(img):
     hoff,voff = 35,3
     output_dtype = img.dtype
     newimg = img[voff:-voff:1,hoff:-hoff:1]
@@ -51,21 +51,11 @@ def singleChannel_falseColor(input_image,channelID='s0',output_dtype = numpy.uin
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
     """
     
-    beta_dict = {'cytoplasm' : {'K' : 0.008,
+    beta_dict = {'s01' : {'K' : 0.008,
                               'R' : 0.300,
                               'G' : 1.000,
                               'B' : 0.860,
                               'thresh' : 500},
-                's01' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
-                              'B' : 0.860,
-                              'thresh' : 500},
-                 'nuclei' : {'K' : 0.017,
-                             'R' : 0.544,
-                             'G' : 1.000,
-                             'B' : 0.050,
-                             'thresh' : 50},
                 's00' : {'K' : 0.017,
                              'R' : 0.544,
                              'G' : 1.000,
@@ -99,35 +89,26 @@ def combineFalseColoredChannels(input_image,norm_factor = 255,output_dtype = num
     
     return RGB_image.astype(output_dtype)
     
-    
-
 def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     """
     expects input imageSet data to be structured in the same way as in the FCdataobject
 
-    """
-    # print(type(imageSet))
+    false coloring based on:
+        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
 
-    beta_dict = {'cytoplasm' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
-                              'B' : 0.860,
-                              'thresh' : 500},
-                's01' : {'K' : 0.008,
-                              'R' : 0.30,
-                              'G' : 1.0,
-                              'B' : 0.860,
-                              'thresh' : 500},
-                 'nuclei' : {'K' : 0.017,
+    """
+    beta_dict = {'s00' : {'K' : 0.017,
                              'R' : 0.544,
                              'G' : 1.000,
                              'B' : 0.050,
                              'thresh' : 50},
-                's00' : {'K' : 0.017,
-                             'R' : 0.544,
-                             'G' : 1.000,
-                             'B' : 0.050,
-                             'thresh' : 50}}
+
+                's01' : {'K' : 0.008,
+                              'R' : 0.30,
+                              'G' : 1.0,
+                              'B' : 0.860,
+                              'thresh' : 500}
+                              }
 
     constants_nuclei = beta_dict[channelIDs[0]]
     k_nuclei = constants_nuclei['K']
@@ -135,8 +116,8 @@ def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     constants_cyto = beta_dict[channelIDs[1]]
     k_cytoplasm= constants_cyto['K']
      
-    nuclei = preProcess(imageSet[:,:,0],channelIDs[0])
-    cyto = preProcess(imageSet[:,:,1],channelIDs[1])
+    nuclei = preProcess(imageSet[:,:,0])
+    cyto = preProcess(imageSet[:,:,1])
 
     RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
       
@@ -154,25 +135,29 @@ def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
-def preProcess(images, channelID, nuclei_thresh = 50, cyto_thresh = 500):
+def preProcess(image, thresh = 50):
+    """
+    image : 2d numpy array
+        image for processing
 
-    channel_parameters = {'s00' : {'thresh' : 50},
-                          's01' : {'thresh' : 50}}
+    threshold : int
+        background level to subtract
+    """
 
+      #background subtraction
+      image -= thresh
 
-    #parameters for background subtraction
-    thresh = channel_parameters[channelID]['thresh']
-    images -= thresh
+      #no negative values
+      image[image < 0] = 0
 
-    images[images < 0] = 0
+      #calculate normalization factor
+      images = numpy.power(images,0.85)
+      image_mean = numpy.mean(images[images>thresh])*8
 
-    images = numpy.power(images,0.85)
+      #convert into 8bit range
+      processed_images = images*(65535/image_mean)*(255/65535)
 
-    image_mean = numpy.mean(images[images>thresh])*8
-
-    processed_images = images*(65535/image_mean)*(255/65535)
-
-    return processed_images
+      return processed_images
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
@@ -189,7 +174,6 @@ def rapid_preProcess(image,background,norm_factor,output):
 
     output : 2d numpy array
         numpy array of zeros for gpu to assign values to
-
     """
 
     #create iterator for gpu  
@@ -211,7 +195,7 @@ def rapid_preProcess(image,background,norm_factor,output):
             output[row,col] = 255
 
 @cuda.jit #direct GPU compiling
-def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyt_settings):
+def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
     """
     nuclei : numpy.array
         nuclear channel image
@@ -223,32 +207,30 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyt_settings):
         
     nuc_settings : float
         RGB constant for nuclear channel
-
-    cyt_settings : float
+    
+    cyto_settings : float
         RGB constant for cyto channel
     """
     row,col = cuda.grid(2)
 
     if row < output.shape[0] and col < output.shape[1]:
-        tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyt_settings
+        tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyto_settings
         output[row,col] = 255*exp(-1*tmp)
 
 
-def rapidFalseColor(nuclei, cyto, nuc_settings, cyt_settings,
+def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    TPB=(32,32) ,nuc_normfactor = 8500, cyto_normfactor=3000):
     """
     nuclei : numpy.array
         nuclear channel image
-        already pre processed
         
     cyto : numpy.array
         cyto channel image
-        already pre processed
         
     nuc_settings : list
         settings of RGB constants for nuclear channel
     
-    cyt_settings : list
+    cyto_settings : list
         settings of RGB constants for cyto channel
 
     nuc_normfactor : int
@@ -262,12 +244,12 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyt_settings,
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads)
         used for GPU threads
-    
     """
+
+    #create blockgrid for gpu
     blockspergrid_x = int(math.ceil(nuclei.shape[0] / threadsperblock[0]))
     blockspergrid_y = int(math.ceil(nuclei.shape[1] / threadsperblock[1]))
     blockspergrid = (blockspergrid_x, blockspergrid_y)
-    
     
     #run background subtraction for nuclei
     pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape))
@@ -279,10 +261,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyt_settings,
     cyto_global_mem = cuda.to_device(cyto)
     preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_norm,pre_cyto_output)
     
-    
     #create output array to iterate through
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1])) 
-
 
     #iterate through output array and assign values based on RGB settings
     for i,z in enumerate(RGB_image):
@@ -292,7 +272,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyt_settings,
         cyto_global = cuda.to_device(cyto)
 
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
-                                                nuc_settings[i],cyt_settings[i])
+                                                nuc_settings[i],cyto_settings[i])
         
         RGB_image[i] = output_global.copy_to_host()
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
