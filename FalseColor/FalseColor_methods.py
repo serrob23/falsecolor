@@ -212,7 +212,7 @@ def rapid_preProcess(image,background,norm_factor,output):
 
 @cuda.jit #direct GPU compiling
 def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyt_settings):
-  """
+    """
     nuclei : numpy.array
         nuclear channel image
         already pre processed
@@ -223,10 +223,10 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyt_settings):
         
     nuc_settings : float
         RGB constant for nuclear channel
-    
+
     cyt_settings : float
         RGB constant for cyto channel
-  """
+    """
     row,col = cuda.grid(2)
 
     if row < output.shape[0] and col < output.shape[1]:
