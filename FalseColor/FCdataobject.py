@@ -18,7 +18,6 @@ from functools import partial
 import glob
 import time
 import h5py as hp
-import FalseColor_methods
 
 
 class DataObject(object):
