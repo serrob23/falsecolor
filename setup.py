@@ -14,6 +14,6 @@ setup(name='FalseColor',
                         'tifffile',
                         'h5py',
                         'functools'
-                        ]
+                        ],
     author_email='serrob23@uw.edu',
     packages=['FalseColor'])
