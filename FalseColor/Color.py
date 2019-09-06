@@ -157,7 +157,7 @@ def preProcess(image, thresh = 50):
     #convert into 8bit range
     processed_images = images*(65535/image_mean)*(255/65535)
 
-      return processed_images
+    return processed_images
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
