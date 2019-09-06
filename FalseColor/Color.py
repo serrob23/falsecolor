@@ -144,18 +144,18 @@ def preProcess(image, thresh = 50):
         background level to subtract
     """
 
-      #background subtraction
-      image -= thresh
+    #background subtraction
+    image -= thresh
 
-      #no negative values
-      image[image < 0] = 0
+    #no negative values
+    image[image < 0] = 0
 
-      #calculate normalization factor
-      images = numpy.power(images,0.85)
-      image_mean = numpy.mean(images[images>thresh])*8
+    #calculate normalization factor
+    images = numpy.power(images,0.85)
+    image_mean = numpy.mean(images[images>thresh])*8
 
-      #convert into 8bit range
-      processed_images = images*(65535/image_mean)*(255/65535)
+    #convert into 8bit range
+    processed_images = images*(65535/image_mean)*(255/65535)
 
       return processed_images
 
