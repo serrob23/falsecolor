@@ -257,7 +257,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     pre_nuc_output = numpy.zeros(nuclei.shape)
     pre_nuc_output = cuda.to_device(pre_nuc_output)
     nuc_global_mem = cuda.to_device(nuclei)
-    rapid_preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_normfactor,nuc_output_global)
+    rapid_preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_normfactor,pre_nuc_output)
     
     #run background subtraction for cyto
     cyto = numpy.ascontiguousarray(cyto)
