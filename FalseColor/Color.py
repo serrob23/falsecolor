@@ -20,7 +20,7 @@ import cv2
 import numpy
 import h5py as hp
 from numba import cuda
-from math import exp, ceil
+from math
 
 def denoiseImage(img):
     """
@@ -215,7 +215,7 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
 
     if row < output.shape[0] and col < output.shape[1]:
         tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyto_settings
-        output[row,col] = 255*exp(-1*tmp)
+        output[row,col] = 255*math.exp(-1*tmp)
 
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
