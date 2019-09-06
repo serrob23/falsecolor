@@ -191,8 +191,6 @@ def rapid_preProcess(image,background,norm_factor,output):
         #remove negative values
         if tmp < 0:
             output[row,col] = 0
-        if tmp > 255: #currently saturated pixels will be set to maximum 8bit level
-            output[row,col] = 255
 
 @cuda.jit #direct GPU compiling
 def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
@@ -272,8 +270,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     for i,z in enumerate(RGB_image):
         #allocate memory for output on GPU
         output_global = cuda.to_device(numpy.zeros(z.shape)) 
-        nuclei_global = cuda.to_device(nuclei)
-        cyto_global = cuda.to_device(cyto)
+        nuclei_global = cuda.to_device(pre_nuc_output)
+        cyto_global = cuda.to_device(pre_cyto_output)
 
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
                                                 nuc_settings[i],cyto_settings[i])
