@@ -247,7 +247,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
 
     #create blockgrid for gpu
-    print(nuclei.shape)
+    
     blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
     blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
     blockspergrid = (blockspergrid_x, blockspergrid_y)
