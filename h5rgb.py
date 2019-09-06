@@ -1,27 +1,27 @@
-"""
-Authors: Adam Glaer, Robert Serafin
-Date: 8/29/2019
-
-Code for H&E false coloring large scale OTLS datasets
-"""
-
 import argparse
 import tables as tb
 from skimage.external import tifffile
 from skimage.exposure import equalize_adapthist
+from skimage.filters  import gaussian
+import os.path
 import os
 import h5py as h5
 import numpy as np
 import multiprocessing as mp
 from functools import partial
 import scipy.ndimage
+from scipy import signal
 
 def main():
 
     ## INPUTS
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", help='imaris file')
+    parser.add_argument("fname", help='imaris file')
+    parser.add_argument("alpha", type = float, help='imaris file')
     args = parser.parse_args()
+
+    alpha = args.alpha
     tileSize = 256 # hardcoded for now
 
     ## SETUP PATHS
@@ -29,9 +29,9 @@ def main():
     file_name = os.path.splitext(os.path.basename(file_path))[0]
     dir_name = os.path.dirname(file_path)
 
-    ## MAKE RGB FOLDER FOR TIFFS
-    if not os.path.exists(dir_name):
-        os.mkdir(dir_name + '\\RGB')
+    ## MAKE example FOLDER FOR TIFFS
+    if not os.path.exists(dir_name + '\\example'):
+        os.mkdir(dir_name + '\\example')
 
     ## READ DOWNSAMPLED DATA TO CALCULATE NORMILIZATION FACTORS
     f = h5.File(file_path,'r')
@@ -43,9 +43,11 @@ def main():
     # MEAN IS 90% MAX INTENSITY
     # BKG IS MEAN / 5
     mean_0 = np.sort(channel_0_ds, axis = None)
-    mean_0 = mean_0[int(np.round(mean_0.shape[0]*0.9))]
+    mean_0 = mean_0[np.where(mean_0 > 50)]
+    mean_0 = mean_0[int(np.round(mean_0.shape[0]*0.95))]
     mean_1 = np.sort(channel_1_ds, axis = None)
-    mean_1 = mean_1[int(np.round(mean_1.shape[0]*0.9))]
+    mean_1 = mean_1[np.where(mean_1 > 50)]
+    mean_1 = mean_1[int(np.round(mean_1.shape[0]*0.95))]
 
     bkg_0 = mean_0 / 5
     bkg_1 = mean_1 / 5
@@ -75,7 +77,7 @@ def main():
 
                 ROI_0 = channel_0_ds[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
                 
-                fkg_ind = R0I_0[ROI_0 > bkg_0]
+                fkg_ind = np.where(ROI_0 > bkg_0)
                 if fkg_ind[0].size==0:
                     Mtemp = mean_0
                 else:
@@ -92,7 +94,7 @@ def main():
                 M_1[i-1, j-1, k-1] = Mtemp + M_1[i-1, j-1, k-1]
 
 
-    ## SET RGB VALUES FOR H&E CHANNELS
+    ## SET example VALUES FOR H&E CHANNELS
     beta2 = 0.05;
     beta4 = 1.00;
     beta6 = 0.544;
@@ -109,10 +111,36 @@ def main():
         # ONLY GRAB XY EXTENTS THAT ARE MULTIPLES OF TILESIZE
         temp_0 = f['/t00000/s00/0/cells'][0:tileSize*M_0.shape[0],k,0:tileSize*M_0.shape[2]]
         temp_1 = f['/t00000/s01/0/cells'][0:tileSize*M_0.shape[0],k,0:tileSize*M_0.shape[2]]
+        temp_0 = temp_0.astype(float)
+        temp_1 = temp_1.astype(float)
+
+        ind0 = np.where(temp_0 < 0)
+        ind1 = np.where(temp_1 < 0)
+        temp_0[ind0] = 32768 - (-32768 - temp_0[ind0])
+        temp_1[ind1] = 32768 - (-32768 - temp_1[ind1])
+
+        ## SHARPENING
+        kernel1 = np.array([
+        [1,1,1],
+        [0,0,0],
+        [-1,-1,-1],
+        ])
+
+        kernel2 = np.array([
+        [1,0,-1],
+        [1,0,-1],
+        [1,0,-1],
+        ])
+
+        temp_0 = temp_0 + alpha*np.sqrt(signal.convolve2d(temp_0,kernel1,mode='same')**2 + signal.convolve2d(temp_0,kernel2,mode='same')**2)
+        temp_1 = temp_1 + alpha*np.sqrt(signal.convolve2d(temp_1,kernel1,mode='same')**2 + signal.convolve2d(temp_1,kernel2,mode='same')**2)
+
+        tifffile.imsave(dir_name + '\\example\\T0_' + '{:0>6d}'.format(k) + '.tif', temp_0.astype('uint16'))
+        tifffile.imsave(dir_name + '\\example\\T1_' + '{:0>6d}'.format(k) + '.tif', temp_1.astype('uint16'))
 
         # INTERPOLATE THE NORMALIZATION MATRIX FOR THE GIVEN Z-PLANE
         # ALSO INTERPOLATE ITS RESOLUTION UP TO MATCH THE RAW DATA
-        if k < int(M_0.shape[1]*256-tileSize/2):
+        if k < int(M_0.shape[1]*256-tileSize):
             if k < int(tileSize/2):
                 C_0 = M_0[:,0, :]
                 C_0 = scipy.ndimage.interpolation.zoom(C_0, tileSize, order = 1, mode = 'nearest')
@@ -126,37 +154,44 @@ def main():
                 y0 = M_0[:,int(x0),:]
                 y1 = M_0[:,int(x1),:]
 
-                C_0 = y0 + (x - x0)*(y1 - y0)/(x1 - x0)
+                if x1 == x0:
+                    C_0 = y1
+                else:
+                    C_0 = y0 + (x - x0)*(y1 - y0)/(x1 - x0)
                 C_0 = scipy.ndimage.interpolation.zoom(C_0, tileSize, order = 1, mode = 'nearest')
 
                 y0 = M_1[:,int(x0),:]
                 y1 = M_1[:,int(x1),:]
 
-                C_1 = y0 + (x - x0)*(y1 - y0)/(x1 - x0)
+                if x1 == x0:
+                    C_1 = y1
+                else:
+                    C_1 = y0 + (x - x0)*(y1 - y0)/(x1 - x0)
                 C_1 = scipy.ndimage.interpolation.zoom(C_1, tileSize, order = 1, mode = 'nearest')
         else:
             C_0 = M_0[:,M_0.shape[1]-1, :]
             C_0 = scipy.ndimage.interpolation.zoom(C_0, tileSize, order = 1, mode = 'nearest')
 
             C_1 = M_1[:,M_1.shape[1]-1, :]
-            C_1 = scipy.ndimage.interpolation.zoom(C_1, tileSize, order = 1, mode = 'nearest')  
+            C_1 = scipy.ndimage.interpolation.zoom(C_1, tileSize, order = 1, mode = 'nearest')
+
+        C_0 = gaussian(C_0, sigma = 100)
+        C_1 = gaussian(C_1, sigma = 100)
 
         # CLIP OFF THE BACKGROUND TO 0
         np.clip(temp_0,bkg_0, 65535) - bkg_0
-        np.clip(temp_1,bkg_1, 65535) - bkg_1
+        np.clip(temp_1,3*bkg_1, 65535) - 3*bkg_1
 
         # FALSE COLOR IMAGES WITH BEER LAMBERT LAW
-        temp_0 = temp_0.astype(float)
-        temp_1 = temp_1.astype(float)
-        im = np.zeros((temp_0.shape[0], temp_0.shape[1], 3))
-        im[:,:,0] = np.multiply(np.exp(np.divide(-temp_0*beta1,(2.72*C_0))), np.exp(np.divide(-temp_1*beta2,(2.72*C_1))))
-        im[:,:,1] = np.multiply(np.exp(np.divide(-temp_0*beta3,(2.72*C_0))), np.exp(np.divide(-temp_1*beta4,(2.72*C_1))))
-        im[:,:,2] = np.multiply(np.exp(np.divide(-temp_0*beta5,(2.72*C_0))), np.exp(np.divide(-temp_1*beta6,(2.72*C_1))))
+        im = np.zeros((temp_0.shape[0], temp_0.shape[1], 3), dtype = float)
+        im[:,:,0] = np.multiply(np.exp(np.divide(-temp_0*beta1,(4.72*C_0))), np.exp(np.divide(-temp_1*beta2,(4.72*C_1))))
+        im[:,:,1] = np.multiply(np.exp(np.divide(-temp_0*beta3,(4.72*C_0))), np.exp(np.divide(-temp_1*beta4,(4.72*C_1))))
+        im[:,:,2] = np.multiply(np.exp(np.divide(-temp_0*beta5,(4.72*C_0))), np.exp(np.divide(-temp_1*beta6,(4.72*C_1))))
 
         # CONVERT TO 8-BIT RGB AND SAVE FILE
         im = im*255
         im = im.astype('uint8')
-        tifffile.imsave(dir_name + '\\RGB\\' + '{:0>6d}'.format(k) + '.tif', im)
+        tifffile.imsave(dir_name + '\\' + args.fname + '\\' + '{:0>6d}'.format(k) + '.tif', im)
 
     f.close()
 
