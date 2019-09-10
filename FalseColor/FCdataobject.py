@@ -18,7 +18,7 @@ from functools import partial
 import glob
 import time
 import h5py as hp
-
+import FalseColor.Color as fc
 
 class DataObject(object):
     def __init__(self, directory, imageSet = None,
