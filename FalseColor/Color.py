@@ -72,8 +72,6 @@ def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
     imageSet : 3D numpy array
         dimmensions are [X,Y,C]
 
-    expects input imageSet data to be structured in the same way as in the FCdataobject
-
     false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
 
