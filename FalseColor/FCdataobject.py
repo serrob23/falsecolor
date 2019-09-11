@@ -2,7 +2,7 @@
 DataObject for H&E False coloring
 
 Robert Serafin
-8/14/2019
+9/11/2019
 
 """
 
@@ -143,4 +143,3 @@ class DataObject(object):
             
             else:
                 return numpy.asarray(processed_images,dtype = dtype)
-
