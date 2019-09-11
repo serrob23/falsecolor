@@ -21,31 +21,9 @@ import numpy
 import h5py as hp
 from numba import cuda
 import math
+import tensorflow as tf
 
-def denoiseImage(img):
-    """
-    Denoise image by subtracting laplacian of gaussian
-    """
-    output_dtype = img.dtype
-    img_gaus = nd.filters.gaussian_filter(img,sigma=3)
-    img_log = nd.filters.laplace(img_gaus)#laplacian filter
-    denoised_img = img - img_log # noise subtraction
-    denoised_img[denoised_img < 0] = 0 # no negative pixels
-    return denoised_img.astype(output_dtype)
-
-def padImages(img):
-    hoff,voff = 35,3
-    output_dtype = img.dtype
-    newimg = numpy.pad(img,((voff,voff),(hoff,hoff)),'constant',constant_values = 0)
-    return newimg.astype(output_dtype)
-
-def unpadImages(img):
-    hoff,voff = 35,3
-    output_dtype = img.dtype
-    newimg = img[voff:-voff:1,hoff:-hoff:1]
-    return newimg.astype(output_dtype)
-
-def singleChannel_falseColor(input_image,channelID='s0',output_dtype = numpy.uint8):
+def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
     """
     single channel false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
@@ -78,7 +56,7 @@ def singleChannel_falseColor(input_image,channelID='s0',output_dtype = numpy.uin
     
     return RGB_image.astype(output_dtype)
 
-def combineFalseColoredChannels(input_image,norm_factor = 255,output_dtype = numpy.uint8):
+def combineFalseColoredChannels(input_image, norm_factor = 255, output_dtype = numpy.uint8):
 
     nuclei,cytoplasm = input_image[0],input_image[1]
     
@@ -89,9 +67,10 @@ def combineFalseColoredChannels(input_image,norm_factor = 255,output_dtype = num
     
     return RGB_image.astype(output_dtype)
     
-def falseColor(imageSet,channelIDs=['s00','s01'],output_dtype=numpy.uint8):
+def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
     """
-    expects input imageSet data to be structured in the same way as in the FCdataobject
+    imageSet : 3D numpy array
+        dimmensions are [X,Y,C]
 
     false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
@@ -188,6 +167,7 @@ def rapid_preProcess(image,background,norm_factor,output):
         #normalize to 8bit range
         tmp = image[row,col]*(65535/norm_factor)*(255/65535)
         output[row,col] =tmp
+
         #remove negative values
         if tmp < 0:
             output[row,col] = 0
@@ -245,7 +225,6 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
 
     #create blockgrid for gpu
-    
     blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
     blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
     blockspergrid = (blockspergrid_x, blockspergrid_y)
@@ -264,11 +243,11 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     rapid_preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_normfactor,pre_cyto_output)
     
     #create output array to iterate through
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1])) 
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]),dtype = numpy.int8) 
 
     #iterate through output array and assign values based on RGB settings
-    for i,z in enumerate(RGB_image):
-        #allocate memory for output on GPU
+    for i,z in enumerate(RGB_image): #TODO: speed this up on GPU
+        #allocate memory on GPU
         output_global = cuda.to_device(numpy.zeros(z.shape)) 
         nuclei_global = cuda.to_device(pre_nuc_output)
         cyto_global = cuda.to_device(pre_cyto_output)
@@ -278,7 +257,44 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         
         RGB_image[i] = output_global.copy_to_host()
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
-    return RGB_image.astype(numpy.uint8)
+    return RGB_image
+
+def sharpenImage(input_image,alpha = 0.5):
+    #create kernels to amplify edges
+    horizontal = tf.constant([
+                                [1,1,1],
+                                [0,0,0],
+                                [-1,-1,-1]] ,dtype = tf.float32)
+
+    vertical = tf.constant([
+                             [1,0,-1],
+                             [1,0,-1],
+                             [1,0,-1]], dtype= tf.float32)
+
+    #reshape kernels to 4D for convolution
+    h_kernel = tf.reshape(horizontal, [3,3,1,1])
+    v_kernel = tf.reshape(vertical, [3,3,1,1])
+
+    #convert image to float32 for GPU acceleration
+    image = tf.image.convert_image_dtype(copy.deepcopy(input_image), tf.float32)
+    
+    #reshape image to 4D for convolution
+    image = tf.reshape(image, [1, image.shape[0], image.shape[1], 1])
+
+    #define convolutions
+    vres = tf.nn.conv2d(image, v_kernel, [1,1,1,1], padding = "SAME")
+    hres = tf.nn.conv2d(image, h_kernel, [1,1,1,1], padding = "SAME")
+    
+    #run convolutions on GPU
+    with tf.Session() as sess:
+        h_final = sess.run(hres)
+        v_final = sess.run(vres)
+    
+    #final sharpening
+    output_image = input_image.astype(numpy.float32) + \
+                            alpha*numpy.sqrt(h_final[0,:,:,0]**2 + v_final[0,:,:,0]**2)
+    
+    return output_image
 
 def adaptiveBinary(images, blocksize = 15,offset = 0):
     if len(images.shape) == 2:
@@ -322,3 +338,14 @@ def filter_and_equalize(Image,kernel_size = 204):
     z = ex.equalize_adapthist(z,kernel_size=kernel_size)
 
     return util.img_as_uint(z)
+
+def denoiseImage(img):
+    """
+    Denoise image by subtracting laplacian of gaussian
+    """
+    output_dtype = img.dtype
+    img_gaus = nd.filters.gaussian_filter(img,sigma=3)
+    img_log = nd.filters.laplace(img_gaus)#laplacian filter
+    denoised_img = img - img_log # noise subtraction
+    denoised_img[denoised_img < 0] = 0 # no negative pixels
+    return denoised_img.astype(output_dtype)

@@ -18,7 +18,7 @@ from functools import partial
 import glob
 import time
 import h5py as hp
-
+import FalseColor.Color as fc
 
 class DataObject(object):
     def __init__(self, directory, imageSet = None,
@@ -32,14 +32,8 @@ class DataObject(object):
         directory : string or pathlike
             Base directory where image data is stored
             
-        imageSet : dict #TODO: convert to zipped array for tif loading
-            default None, if passed the directory structure should be 
-            
-            imageSet = {'channel_name' : {
-                                        'data' : numpy.array, #image data
-                                        'files : list #list of file names ending in
-                                        }
-                        ....}
+        imageSet : 3d numpy array
+            images for processing
         
         setupPool : bool
             setup processing pool
@@ -48,12 +42,8 @@ class DataObject(object):
         
         # object base directory
         self.directory = directory
-              
-        if imageSet is not None:
-            self.imageSet = imageSet
-        else:
-            self.imageSet = {}
         
+        self.imageSet = imageSet
         
         if setupPool:
             self.setupProcessing(ncpus = ncpus)
@@ -72,12 +62,8 @@ class DataObject(object):
             for i,z in enumerate(file_list):
                 images[i] = tf.imread(z)
                 file_names.append(z.split(os.sep)[-1])
-            
-            if channel_ID not in self.imageSet.keys():
-                self.imageSet[channel_ID] = {}
-            
-            self.imageSet[channel_ID]['data'] = images
-            self.imageSet[channel_ID]['files'] = file_names
+
+            return images
         
         except AssertionError:
             print('Image_size must be tuple of form (m,n) where m and n are integers')
