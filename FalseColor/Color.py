@@ -214,7 +214,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     #iterate through output array and assign values based on RGB settings
     for i,z in enumerate(RGB_image): #TODO: speed this up on GPU
-    
+
         #allocate memory on GPU with background subtracted images and final output
         output_global = cuda.to_device(numpy.zeros(z.shape)) 
         nuclei_global = cuda.to_device(pre_nuc_output)
@@ -266,6 +266,32 @@ def sharpenImage(input_image,alpha = 0.5):
                             alpha*numpy.sqrt(h_final[0,:,:,0]**2 + v_final[0,:,:,0]**2)
     
     return output_image
+
+@cuda.jit
+def convolve2D(image,kernel,output_image):
+
+    row,col = cuda.grid(2)
+
+    image_rows, image_cols = image.shape
+
+    #ignore threads outside image
+    if (row >= image_rows) or (col >= image_cols):
+        return
+
+    delta_R = kernel.shape[0]//2
+    delta_C = kernel.shape[1]//2
+
+    tmp = 0
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            row_i = row - i + delta_R
+            col_j = col - j + delta_C
+
+            if (row_i >= 0) and (row_i < image_rows):
+                if (col_j >= 0) and (col_j < image_cols):
+                    tmp += kernel[i,j]*image[row_i,col_i]
+
+    output_image[row,col] = tmp
 
 def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
     """
