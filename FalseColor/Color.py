@@ -371,3 +371,46 @@ def denoiseImage(img):
     denoised_img = img - img_log # noise subtraction
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
+
+def getBackgroundLevels(imageSet, threshold = 50):
+
+    image_DS = numpy.sort(imageSet,axis=None)
+
+    foreground_vals = image_DS[numpy.where(image_DS > threshold)]
+
+    hi_val = foreground_vals[int(numpy.round(len(foreground_vals)*0.95))]
+
+    background = hi_val/5
+
+    return hi_val,background
+
+def getFlatField(image):
+    midrange,background = getBackgroundLevels(image)
+    
+    rows_max = int(np.floor(image.shape[0]/16)*16)
+    cols_max = int(np.floor(image.shape[2]/16)*16)
+    stacks_max = int(np.floor(image.shape[1]/16)*16)
+
+    rows = np.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
+    cols = np.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
+    stacks = np.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
+    
+    flat_field = np.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
+    
+    for i in range(1,len(rows)):
+        for j in range(1,len(stacks)):
+            for k in range(1,len(cols)):
+
+                ROI_0 = image[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
+                
+                fkg_ind = np.where(ROI_0 > background)
+                if fkg_ind[0].size==0:
+                    Mtemp = midrange
+                else:
+                    Mtemp = np.median(ROI_0[fkg_ind])
+                flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
+    return flat_field
+
+
+
+
