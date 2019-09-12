@@ -214,7 +214,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     #iterate through output array and assign values based on RGB settings
     for i,z in enumerate(RGB_image): #TODO: speed this up on GPU
-    
+
         #allocate memory on GPU with background subtracted images and final output
         output_global = cuda.to_device(numpy.zeros(z.shape)) 
         nuclei_global = cuda.to_device(pre_nuc_output)
@@ -232,40 +232,57 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
 def sharpenImage(input_image,alpha = 0.5):
     #create kernels to amplify edges
-    horizontal = tf.constant([
-                                [1,1,1],
-                                [0,0,0],
-                                [-1,-1,-1]] ,dtype = tf.float32)
-
-    vertical = tf.constant([
-                             [1,0,-1],
-                             [1,0,-1],
-                             [1,0,-1]], dtype= tf.float32)
-
-    #reshape kernels to 4D for convolution
-    h_kernel = tf.reshape(horizontal, [3,3,1,1])
-    v_kernel = tf.reshape(vertical, [3,3,1,1])
-
-    #convert image to float32 for GPU acceleration
-    image = tf.image.convert_image_dtype(copy.deepcopy(input_image), tf.float32)
+    horizontal = np.array([[1,1,1],[0,0,0],[-1,-1,-1]])
+    vertical = np.array([[1,0,-1],[1,0,-1],[1,0,-1]])
     
-    #reshape image to 4D for convolution
-    image = tf.reshape(image, [1, image.shape[0], image.shape[1], 1])
+    blocks = (32,32)
+    grid = (input_image.shape[0] // blocks[0] + 1, input_image.shape[1] // blocks[1] + 1)
 
-    #define convolutions
-    vres = tf.nn.conv2d(image, v_kernel, [1,1,1,1], padding = "SAME")
-    hres = tf.nn.conv2d(image, h_kernel, [1,1,1,1], padding = "SAME")
+
+    #create output arrays for each convolution
+    h_output = np.zeros(input_image.shape, dtype = numpy.int32)
+    v_output = np.zeros(input_image.shape, dtype = numpy.int32)
+
+    #cuda accelerated convolution of input image with each kernel
+    convolve2D[grid,blocks](copy.deepcopy(input_image), horizontal, h_output)
+    convolve2D[grid,blocks](copy.deepcopy(input_image), vertical, v_output)
+
+    #final sharpening of image
+    final_image = input_image + alpha*numpy.sqrt(h_output**2 + v_output**2)
     
-    #run convolutions on GPU
-    with tf.Session() as sess:
-        h_final = sess.run(hres)
-        v_final = sess.run(vres)
-    
-    #final sharpening
-    output_image = input_image.astype(numpy.float32) + \
-                            alpha*numpy.sqrt(h_final[0,:,:,0]**2 + v_final[0,:,:,0]**2)
-    
-    return output_image
+    return final_image
+
+@cuda.jit
+def convolve2D(image,kernel,output_image):
+    #create iterators
+    row,col = cuda.grid(2)
+
+    #define iterator boundaries
+    image_rows, image_cols = image.shape
+
+    #ignore threads outside image
+    if (row >= image_rows) or (col >= image_cols):
+        return
+
+    #window size for computing result at i,j 
+    delta_R = kernel.shape[0]//2
+    delta_C = kernel.shape[1]//2
+
+    tmp = 0
+    for i in range(image.shape[0]):
+        for j in range(image.shape[1]):
+            # retult at i,j is:
+            # sum(i,j) mask[i,j]*image[row-i+delta_R,col-j+delta_C]
+            # where i,j iterate through the kernel
+            row_i = row - i + delta_R
+            col_j = col - j + delta_C
+
+            #only compute for indicies within image boundary
+            if (row_i >= 0) and (row_i < image_rows):
+                if (col_j >= 0) and (col_j < image_cols):
+                    tmp += kernel[i,j]*image[row_i,col_i]
+
+    output_image[row,col] = tmp
 
 def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
     """
