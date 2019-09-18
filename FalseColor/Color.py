@@ -137,13 +137,15 @@ def rapid_preProcess(image,background,norm_factor,output):
             output[row,col] = 0
 
 @cuda.jit #direct GPU compiling
-def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
+def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
+                        cyto_settings, nuc_normfactor, cyto_normfactor):
+    #TODO: implement array base normalization
     """
-    nuclei : numpy.array
+    nuclei : numpy array
         nuclear channel image
         already pre processed
 
-    cyto : numpy.array
+    cyto : numpy array
         cyto channel image
         already pre processed
         
@@ -160,13 +162,31 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,cyto_settings):
         tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyto_settings
         output[row,col] = 255*math.exp(-1*tmp)
 
-def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
-                   TPB=(32,32) ,nuc_normfactor = 8500, cyto_normfactor=3000):
+@cuda.jit
+def rapidFieldDivision(image,flat_field,output):
     """
-    nuclei : numpy.array
+    used for falseColoring when flat fielding has been done
+
+    image : numpy array
+
+    flat_field : numpy array
+
+    """
+    row,col = cuda.grid(2)
+
+    if row < output.shape[0] and col < output.shape[1]:
+        tmp = image[row,col]/flat_field[row,col]
+        output[row,col] = tmp
+
+def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
+                   TPB=(32,32) , nuc_normfactor = 8500, cyto_normfactor=3000,
+                   nuc_background = 50, cyto_background = 50,
+                   run_normalization = False):
+    """
+    nuclei : numpy array
         nuclear channel image
         
-    cyto : numpy.array
+    cyto : numpy array
         cyto channel image
         
     nuc_settings : list
@@ -175,13 +195,19 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     cyto_settings : list
         settings of RGB constants for cyto channel
 
-    nuc_normfactor : int
+    nuc_normfactor : int or array
         defaults to empirically determined constant for background subtraction,
-        will change in the future
+        else should be a numpy array representing the flat field
 
-    cyto_normfactor : int
+    cyto_normfactor : int or array
         defaults to empirically determined constant for background subtraction,
-        will change in the future
+        else should be a numpy array representing the flat field
+
+    nuc_background : int or float
+        defaults to 50, background threshold for subtraction
+
+    cyt_background : int or float
+        defaults to 50, background threshold for subtraction
         
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads)
@@ -194,20 +220,34 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     blockspergrid = (blockspergrid_x, blockspergrid_y)
     
     #allocate memory for background subtraction
-    nuclei = numpy.ascontiguousarray(nuclei,dtype=numpy.int16)
-    pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape,dtype=numpy.int16))
+    nuclei = numpy.ascontiguousarray(nuclei)
+    pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape))
     nuc_global_mem = cuda.to_device(nuclei)
 
-    #run background subtraction for nuclei
-    rapid_preProcess[blockspergrid,TPB](nuc_global_mem,50,nuc_normfactor,pre_nuc_output)
+    #run background subtraction or normalization for nuclei
+    if run_normalization:
+        nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
+        nuc_norm_mem = cuda.to_device(nuc_normfactor)
+        rapidFieldDivision[blockspergrid,TPB](nuc_global_mem,nuc_norm_mem,pre_nuc_output)
+
+    else:
+        rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
+                                                nuc_normfactor,pre_nuc_output)
     
     #allocate memory for background subtraction
-    cyto = numpy.ascontiguousarray(cyto,dtype=numpy.int16)
-    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape,dtype=numpy.int16))
+    cyto = numpy.ascontiguousarray(cyto)
+    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
     cyto_global_mem = cuda.to_device(cyto)
 
     #run background subtraction for cyto
-    rapid_preProcess[blockspergrid,TPB](cyto_global_mem,50,cyto_normfactor,pre_cyto_output)
+    if run_normalization:
+        cyto_normfactor = numpy.ascontiguousarray(nuc_normfactor)
+        cyto_norm_mem = cuda.to_device(cyto_normfactor)
+        rapidFieldDivision[blockspergrid,TPB](cyto_global_mem,cyto_norm_mem,pre_cyto_output)
+
+    else:
+        rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
+                                                cyto_normfactor,pre_cyto_output)
     
     #create output array to iterate through
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]),dtype = numpy.int8) 
@@ -371,3 +411,47 @@ def denoiseImage(img):
     denoised_img = img - img_log # noise subtraction
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
+
+def getBackgroundLevels(imageSet, threshold = 50):
+
+    image_DS = numpy.sort(imageSet,axis=None)
+
+    foreground_vals = image_DS[numpy.where(image_DS > threshold)]
+
+    hi_val = foreground_vals[int(numpy.round(len(foreground_vals)*0.95))]
+
+    background = hi_val/5
+
+    return hi_val,background
+
+def getFlatField(image,tileSize=256):
+    #returns flat field of image and calculated background levels
+    midrange,background = getBackgroundLevels(image)
+    
+    rows_max = int(np.floor(image.shape[0]/16)*16)
+    cols_max = int(np.floor(image.shape[2]/16)*16)
+    stacks_max = int(np.floor(image.shape[1]/16)*16)
+
+    rows = np.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
+    cols = np.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
+    stacks = np.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
+    
+    flat_field = np.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
+    
+    for i in range(1,len(rows)):
+        for j in range(1,len(stacks)):
+            for k in range(1,len(cols)):
+
+                ROI_0 = image[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
+                
+                fkg_ind = np.where(ROI_0 > background)
+                if fkg_ind[0].size==0:
+                    Mtemp = midrange
+                else:
+                    Mtemp = np.median(ROI_0[fkg_ind])
+                flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
+    return flat_field, background
+
+
+
+
