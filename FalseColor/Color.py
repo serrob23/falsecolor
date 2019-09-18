@@ -385,6 +385,7 @@ def getBackgroundLevels(imageSet, threshold = 50):
     return hi_val,background
 
 def getFlatField(image,tileSize=256):
+    #returns flat field of image and calculated background levels
     midrange,background = getBackgroundLevels(image)
     
     rows_max = int(np.floor(image.shape[0]/16)*16)
@@ -409,7 +410,7 @@ def getFlatField(image,tileSize=256):
                 else:
                     Mtemp = np.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
-    return flat_field
+    return flat_field, background
 
 
 
