@@ -384,7 +384,7 @@ def getBackgroundLevels(imageSet, threshold = 50):
 
     return hi_val,background
 
-def getFlatField(image):
+def getFlatField(image,tileSize=256):
     midrange,background = getBackgroundLevels(image)
     
     rows_max = int(np.floor(image.shape[0]/16)*16)
