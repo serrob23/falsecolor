@@ -272,16 +272,16 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
 def sharpenImage(input_image,alpha = 0.5):
     #create kernels to amplify edges
-    horizontal = np.array([[1,1,1],[0,0,0],[-1,-1,-1]])
-    vertical = np.array([[1,0,-1],[1,0,-1],[1,0,-1]])
+    horizontal = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
+    vertical = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
     
     blocks = (32,32)
     grid = (input_image.shape[0] // blocks[0] + 1, input_image.shape[1] // blocks[1] + 1)
 
 
     #create output arrays for each convolution
-    h_output = np.zeros(input_image.shape, dtype = numpy.int32)
-    v_output = np.zeros(input_image.shape, dtype = numpy.int32)
+    h_output = numpy.zeros(input_image.shape, dtype = numpy.int32)
+    v_output = numpy.zeros(input_image.shape, dtype = numpy.int32)
 
     #cuda accelerated convolution of input image with each kernel
     convolve2D[grid,blocks](copy.deepcopy(input_image), horizontal, h_output)
@@ -428,15 +428,15 @@ def getFlatField(image,tileSize=256):
     #returns flat field of image and calculated background levels
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(np.floor(image.shape[0]/16)*16)
-    cols_max = int(np.floor(image.shape[2]/16)*16)
-    stacks_max = int(np.floor(image.shape[1]/16)*16)
+    rows_max = int(numpy.floor(image.shape[0]/16)*16)
+    cols_max = int(numpy.floor(image.shape[2]/16)*16)
+    stacks_max = int(numpy.floor(image.shape[1]/16)*16)
 
-    rows = np.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
-    cols = np.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
-    stacks = np.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
+    rows = numpy.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
+    cols = numpy.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
     
-    flat_field = np.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
+    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
     
     for i in range(1,len(rows)):
         for j in range(1,len(stacks)):
@@ -444,11 +444,11 @@ def getFlatField(image,tileSize=256):
 
                 ROI_0 = image[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
                 
-                fkg_ind = np.where(ROI_0 > background)
+                fkg_ind = numpy.where(ROI_0 > background)
                 if fkg_ind[0].size==0:
                     Mtemp = midrange
                 else:
-                    Mtemp = np.median(ROI_0[fkg_ind])
+                    Mtemp = numpy.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
     return flat_field, background
 
