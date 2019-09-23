@@ -268,7 +268,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     #reorder array to dimmensional form [X,Y,C]
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
-    return RGB_image
+    return RGB_image.astype(numpy.uint8)
 
 def sharpenImage(input_image,alpha = 0.5):
     #create kernels to amplify edges
