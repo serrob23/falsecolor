@@ -138,7 +138,7 @@ def rapid_preProcess(image,background,norm_factor,output):
 
 @cuda.jit #direct GPU compiling
 def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
-                        cyto_settings, nuc_normfactor, cyto_normfactor):
+                        cyto_settings):
     #TODO: implement array base normalization
     """
     nuclei : numpy array
