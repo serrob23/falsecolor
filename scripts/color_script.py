@@ -71,8 +71,8 @@ def main():
         cyto -= 3*bkg_cyt
         cyto = numpy.clip(cyto,0,65535)
 
-        x0 = np.floor(k/tileSize)
-        x1 = np.ceil(k/tileSize)
+        x0 = numpy.floor(k/tileSize)
+        x1 = numpy.ceil(k/tileSize)
         x = k/tileSize
 
         #sharpen images

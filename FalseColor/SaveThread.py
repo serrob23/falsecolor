@@ -7,6 +7,7 @@ Rob Serafin
 import os
 import tiffffile as tif
 import numpy
+import cv2
 
 
 def saveProcess(queue):
@@ -48,6 +49,10 @@ def saveProcess(queue):
 
             file_savename = os.path.join(storage_dir,filename)
 
-            tif.imsave(file_savename,data)
+            if file_savename.endswith('tif'):
+                tif.imsave(file_savename,data)
+
+            else:
+                cv2.imwrite(data,file_savename)
 
 
