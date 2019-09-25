@@ -23,6 +23,7 @@ from numba import cuda
 import math
 import copy
 import tensorflow as tf
+from astropy.convolution import Gaussian2DKernel
     
 def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
     """
@@ -292,6 +293,19 @@ def sharpenImage(input_image,alpha = 0.5):
     
     return final_image
 
+def gaussianBlur(input_image,sigma):
+    kernel = numpy.asarray(Gaussian2DKernel(sigma))
+
+    blocks = (32,32)
+    grid = (input_image.shape[0] // blocks[0] + 1, input_image.shape[1] // blocks[1] + 1)
+
+    output_image = numpy.zeros(input_image.shape)
+
+    convolve2D[grid,blocks](copy.deepcopy(input_image), kernel, output_image)
+
+    return output_image
+
+
 @cuda.jit
 def convolve2D(image,kernel,output_image):
     #create iterators
@@ -385,9 +399,7 @@ def adaptiveBinary(images, blocksize = 15,offset = 0):
             binary_img[i] = z > filt.threshold_local(filtered_z,blocksize,offset=offset)
         binary_img = binary_img.T
     return numpy.asarray(binary_img,dtype =int)
-
-def gaussianSmoothing(images,sigma = 3.0):
-    return nd.filters.gaussian_filter(images,(sigma,sigma))
+    
 
 def medianBlur(images):
     return nd.filters.median_filter(images,1)
