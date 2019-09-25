@@ -334,7 +334,7 @@ def convolve2D(image,kernel,output_image):
             #only compute for indicies within image boundary
             if (row_i >= 0) and (row_i < image_rows):
                 if (col_j >= 0) and (col_j < image_cols):
-                    tmp += kernel[i,j]*image[row_i,col_i]
+                    tmp += kernel[i,j]*image[row_i,col_j]
 
     output_image[row,col] = tmp
 
