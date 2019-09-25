@@ -101,10 +101,10 @@ def main():
             C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
         C_nuc = ndimage.interpolation.zoom(C_nuc, order = 1, mode = 'nearest')
-        C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
+        # C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
 
         C_cyt = ndimage.interpolation.zoom(C_cyt, order = 1, mode = 'nearest')
-        C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
+        # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
 
         RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGB_settings,
                                         nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,

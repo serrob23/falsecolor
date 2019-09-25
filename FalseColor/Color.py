@@ -281,8 +281,8 @@ def sharpenImage(input_image,alpha = 0.5):
 
 
     #create output arrays for each convolution
-    h_output = numpy.zeros(input_image.shape, dtype = numpy.int32)
-    v_output = numpy.zeros(input_image.shape, dtype = numpy.int32)
+    h_output = numpy.zeros(input_image.shape, dtype = numpy.float64)
+    v_output = numpy.zeros(input_image.shape, dtype = numpy.float64)
 
     #cuda accelerated convolution of input image with each kernel
     convolve2D[grid,blocks](copy.deepcopy(input_image), horizontal, h_output)
