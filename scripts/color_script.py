@@ -22,20 +22,21 @@ def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument("filepath", help='imaris file')
-    parser.add_argument("fname", help='imaris file')
+    parser.add_argument("filename", help='imaris file')
     parser.add_argument("alpha", type = float, help='imaris file')
     parser.add_argument("savefolder",help='imaris file')
+    format.add_argument("format",type=str,help='imagris file')
     args = parser.parse_args()
 
-    filename = os.path.basename(args.filepath)
 
-    #make save directory
-    save_dir = args.savefolder + os.sep + "RGB"
-    if not os.path.exists(save_dir):
-        os.mkdir(save_dir)
+    #get path info
+    filename = args.filename
+    filepath = args.filepath
+    save_dir = args.savefolder
 
     #load data
-    f = h5.File(os.path.abspath(args.filename),'r')
+    datapath = os.path.join(filepath,filename)
+    f = h5.File(datapath,'r')
 
     #downsampled data for flat fielding
     nuclei_ds = f['/t00000/s00/4/cells']
@@ -109,6 +110,15 @@ def main():
         RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGB_settings,
                                         nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
                                         run_normalization = True)
+
+        save_file = '{:0>6d}'.format(k) + '.tif'
+        message = [filepath,save_dir,save_file,RGB_image,None]
+        dataQueue.put(message)
+
+    stop_message = [None,None,None,None,'stop']
+    dataQueue.put(stop_message)
+    save_thread.join()
+    f.close()
 
 
 

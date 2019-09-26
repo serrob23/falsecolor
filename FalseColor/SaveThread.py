@@ -5,7 +5,7 @@ Rob Serafin
 9/12/2019
 """
 import os
-import tiffffile as tif
+import tifffile as tif
 import numpy
 import cv2
 
