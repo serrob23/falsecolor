@@ -280,13 +280,24 @@ def sharpenImage(input_image,alpha = 0.5):
     grid = (input_image.shape[0] // blocks[0] + 1, input_image.shape[1] // blocks[1] + 1)
 
 
+
+
     #create output arrays for each convolution
     h_output = numpy.zeros(input_image.shape, dtype = numpy.float64)
+    h_output_mem = cuda.to_device(h_output)
+    input_global_mem = cuda.to_device(numpy.ascontiguousarray(input_image))
+
+    print('horizontal')
+    convolve2D[grid,blocks](input_global_mem, horizontal, h_output_mem)
+
     v_output = numpy.zeros(input_image.shape, dtype = numpy.float64)
+    v_output_mem = cuda.to_device(numpy.ascontiguousarray(v_output))
+    print('vertical')
+    convolve2d[grid,blocks](input_global_mem,vertical,v_output_mem)
 
     #cuda accelerated convolution of input image with each kernel
-    convolve2D[grid,blocks](copy.deepcopy(input_image), horizontal, h_output)
-    convolve2D[grid,blocks](copy.deepcopy(input_image), vertical, v_output)
+
+
 
     #final sharpening of image
     final_image = input_image + alpha*numpy.sqrt(h_output**2 + v_output**2)
@@ -462,7 +473,7 @@ def getFlatField(image,tileSize=256):
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
-    return flat_field, background
+    return flat_field, background/5
 
 
 
