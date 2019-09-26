@@ -111,10 +111,14 @@ def main():
                                         nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
                                         run_normalization = True)
 
+
+        #append data to queue
         save_file = '{:0>6d}'.format(k) + '.tif'
         message = [filepath,save_dir,save_file,RGB_image,None]
         dataQueue.put(message)
 
+
+    #stop data queue
     stop_message = [None,None,None,None,'stop']
     dataQueue.put(stop_message)
     save_thread.join()
