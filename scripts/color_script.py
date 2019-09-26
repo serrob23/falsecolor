@@ -2,7 +2,7 @@
 Script for rapid false coloring large datasets
 
 Rob Serafin
-09/12/2019
+09/26/2019
 """
 
 import os
@@ -25,7 +25,7 @@ def main():
     parser.add_argument("filename", help='imaris file')
     parser.add_argument("alpha", type = float, help='imaris file')
     parser.add_argument("savefolder",help='imaris file')
-    format.add_argument("format",type=str,help='imagris file')
+    parser.add_argument("format",type=str,help='imagris file')
     args = parser.parse_args()
 
 
@@ -48,6 +48,7 @@ def main():
 
     dataQueue = mp.Queue()
     save_thread = mp.Process(target=saveProcess,args=dataQueue)
+    save_thread.start()
 
     #create reference to full res data
     nuclei_hires = f['/t00000/s00/0/cells']
@@ -61,6 +62,9 @@ def main():
     cyto_RGB_settings = [0.05, 1.00, 0.544]
 
     for k in range(nuclei_ds.shape[1]*16):
+
+        if k % 50 == 0:
+            print('on section: ',k)
 
         #get image data from both channels in blocks that are multiples of tileSize
         #subtract background and reset values > 0 and < 2**16
@@ -123,6 +127,10 @@ def main():
     dataQueue.put(stop_message)
     save_thread.join()
     f.close()
+
+if __name__ == '__main__':
+    print('False Coloring')
+    main()
 
 
 
