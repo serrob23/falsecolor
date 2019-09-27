@@ -92,7 +92,7 @@ def main():
             x1 = numpy.ceil(k/tileSize)
             x = k/tileSize
 
-            sharpen images
+            # sharpen images
             print('sharpening')
             nuclei = fc.sharpenImage(nuclei)
             cyto = fc.sharpenImage(cyto)
