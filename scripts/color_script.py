@@ -17,6 +17,7 @@ import copy
 import multiprocessing as mp
 import argparse
 import h5py as h5
+import time
 
 def main():
 
@@ -39,9 +40,8 @@ def main():
 
     #load data
     datapath = filepath + os.sep + filename
-    print(datapath)
+
     f = h5.File(datapath,'r')
-    print(f.keys())
 
     #downsampled data for flat fielding
     nuclei_ds = f['/t00000/s00/4/cells']
@@ -67,6 +67,7 @@ def main():
     cyto_RGB_settings = [0.3, 1.00, 0.86]
 
     for k in range(nuclei_ds.shape[1]*16):
+        t_start = time.time()
 
         if k % 2 == 0:
             print('on section: ',k)
@@ -78,14 +79,18 @@ def main():
             #get image data from both channels in blocks that are multiples of tileSize
             #subtract background and reset values > 0 and < 2**16
             print('line 80')
+            t_nuc = time.time()
             nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],500+k,0:tileSize*M_nuc.shape[2]].astype(float)
             nuclei -= bkg_nuc
             nuclei = numpy.clip(nuclei,0,65535)
+            print('read time nuclei', time.time()-t_nuc)
 
             print('line 85')
+            t_cyt = time.time()
             cyto = cyto_hires[0:tileSize*M_cyt.shape[0],500+k,0:tileSize*M_cyt.shape[2]].astype(float)
             cyto -= bkg_cyt
             cyto = numpy.clip(cyto,0,65535)
+            print('read time cyto', time.time() - t_cyt)
 
             print('line 90')
             x0 = numpy.floor(k/tileSize)
@@ -132,9 +137,12 @@ def main():
 
 
             #append data to queue
-            save_file = '{:0>6d}'.format(k) + '.tif'
+            save_file = '{:0>6d}'.format(k) + args.format
             message = [filepath,save_dir,save_file,RGB_image,None]
+            t0 = time.time()
             dataQueue.put(message)
+            print('transfer time:', time.time()-t0)
+            print('runtime:', time.time() - t_start)
 
 
     #stop data queue
@@ -144,8 +152,10 @@ def main():
     f.close()
 
 if __name__ == '__main__':
+    t_overall = time.time()
     print('False Coloring')
     main()
+    print('total runtime:',time.time()-t_overall)
 
 
 

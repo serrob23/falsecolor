@@ -7,7 +7,8 @@ Rob Serafin
 import os
 import tifffile as tif
 import numpy
-import cv2
+from skimage import io
+import time
 
 
 def saveProcess(queue):
@@ -48,11 +49,16 @@ def saveProcess(queue):
                 os.mkdir(storage_dir)
 
             file_savename = os.path.join(storage_dir,filename)
+            print(storage_dir,filename)
 
             if file_savename.endswith('tif'):
+                t0 = time.time()
                 tif.imsave(file_savename,data)
+                print('save time: ', time.time() - t0)
 
             else:
-                cv2.imwrite(data,file_savename)
+                t0 = time.time()
+                io.imsave(file_savename,data)
+                print('save time: ', time.time() - t0)
 
 
