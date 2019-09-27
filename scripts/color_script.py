@@ -92,10 +92,10 @@ def main():
             x1 = numpy.ceil(k/tileSize)
             x = k/tileSize
 
-            #sharpen images
-            # print('sharpening')
-            # nuclei = fc.sharpenImage(nuclei)
-            # cyto = fc.sharpenImage(cyto)
+            sharpen images
+            print('sharpening')
+            nuclei = fc.sharpenImage(nuclei)
+            cyto = fc.sharpenImage(cyto)
 
             #get background block
             print('background block')

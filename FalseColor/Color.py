@@ -321,7 +321,7 @@ def gaussianBlur(input_image,sigma):
 
     output_image = numpy.zeros(input_image.shape)
 
-    Convolve2D[grid,blocks](copy.deepcopy(input_image), kernel, output_image)
+    Convolve2d[grid,blocks](copy.deepcopy(input_image), kernel, output_image)
 
     return output_image
 
