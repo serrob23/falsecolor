@@ -27,7 +27,6 @@ def main():
     parser.add_argument("alpha", type = float, help='imaris file')
     parser.add_argument("savefolder",help='imaris file')
     parser.add_argument("format",type=str,help='imagris file')
-    parser.add_argument("stop_k",type=int,help='imagris file')
     args = parser.parse_args()
 
 
@@ -36,7 +35,6 @@ def main():
     filepath = args.filepath
     save_dir = args.savefolder
 
-    stop_k = args.stop_k
 
     #load data
     datapath = filepath + os.sep + filename
@@ -69,80 +67,74 @@ def main():
     for k in range(nuclei_ds.shape[1]*16):
         t_start = time.time()
 
-        if k % 2 == 0:
-            print('on section: ',k)
+        print('on section: ',k)
 
-        if k == stop_k:
-            break
-        else:
+        #get image data from both channels in blocks that are multiples of tileSize
+        #subtract background and reset values > 0 and < 2**16
+        print('Reading Data')
+        t_nuc = time.time()
+        nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],500+k,0:tileSize*M_nuc.shape[2]].astype(float)
+        nuclei -= bkg_nuc
+        nuclei = numpy.clip(nuclei,0,65535)
+        print('read time nuclei', time.time()-t_nuc)
 
-            #get image data from both channels in blocks that are multiples of tileSize
-            #subtract background and reset values > 0 and < 2**16
-            print('line 80')
-            t_nuc = time.time()
-            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],500+k,0:tileSize*M_nuc.shape[2]].astype(float)
-            nuclei -= bkg_nuc
-            nuclei = numpy.clip(nuclei,0,65535)
-            print('read time nuclei', time.time()-t_nuc)
+        t_cyt = time.time()
+        cyto = cyto_hires[0:tileSize*M_cyt.shape[0],500+k,0:tileSize*M_cyt.shape[2]].astype(float)
+        cyto -= bkg_cyt
+        cyto = numpy.clip(cyto,0,65535)
+        print('read time cyto', time.time() - t_cyt)
 
-            print('line 85')
-            t_cyt = time.time()
-            cyto = cyto_hires[0:tileSize*M_cyt.shape[0],500+k,0:tileSize*M_cyt.shape[2]].astype(float)
-            cyto -= bkg_cyt
-            cyto = numpy.clip(cyto,0,65535)
-            print('read time cyto', time.time() - t_cyt)
+        x0 = numpy.floor(k/tileSize)
+        x1 = numpy.ceil(k/tileSize)
+        x = k/tileSize
 
-            print('line 90')
-            x0 = numpy.floor(k/tileSize)
-            x1 = numpy.ceil(k/tileSize)
-            x = k/tileSize
+        # sharpen images
+        print('sharpening')
+        nuclei = fc.sharpenImage(nuclei)
+        cyto = fc.sharpenImage(cyto)
 
-            # sharpen images
-            print('sharpening')
-            nuclei = fc.sharpenImage(nuclei)
-            cyto = fc.sharpenImage(cyto)
+        #get background block
+        print('background block')
+        if k < int(M_nuc.shape[1]*tileSize-tileSize):
+            if k < int(tileSize/2):
+                C_nuc = M_nuc[:,0,:]
+                C_cyt = M_cyt[:,0,:]
 
-            #get background block
-            print('background block')
-            if k < int(M_nuc.shape[1]*tileSize-tileSize):
-                if k < int(tileSize/2):
-                    C_nuc = M_nuc[:,0,:]
-                    C_cyt = M_cyt[:,0,:]
-
-                elif x0==x1:
-                    #TODO: ask AK about x0 vs x1 in C_nuc
-                    C_nuc = M_nuc[:,int(x1),:]
-                    C_cyt = M_cyt[:,int(x1),:]
-                else:
-                    C_nuc = M_nuc[:,int(x0),:]
-                    C_cyt = M_cyt[:,ing(x1),:]
-                    diff = C_cyt - C_nuc
-
-                    C_nuc += (x-x0)*diff/(x1-x0)
-                    C_cyt = copy.deepcopy(C_nuc)
+            elif x0==x1:
+                #TODO: ask AK about x0 vs x1 in C_nuc
+                C_nuc = M_nuc[:,int(x1),:]
+                C_cyt = M_cyt[:,int(x1),:]
             else:
-                C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
-                C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
+                C_nuc = M_nuc[:,int(x0),:]
+                C_cyt = M_cyt[:,ing(x1),:]
+                diff = C_cyt - C_nuc
 
-            print('interpolating')
-            C_nuc = ndimage.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
-            # C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
+                C_nuc += (x-x0)*diff/(x1-x0)
+                C_cyt = copy.deepcopy(C_nuc)
+        else:
+            C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
+            C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
-            C_cyt = ndimage.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
-            # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
-            print('RGB')
-            RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGB_settings,
-                                            nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
-                                            run_normalization = True)
+        print('interpolating')
+        C_nuc = ndimage.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
+        # C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
+
+        C_cyt = ndimage.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
+        # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
+
+        print('False Coloring')
+        RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGB_settings,
+                                        nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
+                                        run_normalization = True)
 
 
-            #append data to queue
-            save_file = '{:0>6d}'.format(k) + args.format
-            message = [filepath,save_dir,save_file,RGB_image,None]
-            t0 = time.time()
-            dataQueue.put(message)
-            print('transfer time:', time.time()-t0)
-            print('runtime:', time.time() - t_start)
+        #append data to queue
+        save_file = '{:0>6d}'.format(k) + args.format
+        message = [filepath,save_dir,save_file,RGB_image,None]
+        t0 = time.time()
+        dataQueue.put(message)
+        print('transfer time:', time.time()-t0)
+        print('runtime:', time.time() - t_start)
 
 
     #stop data queue
@@ -153,9 +145,9 @@ def main():
 
 if __name__ == '__main__':
     t_overall = time.time()
-    print('False Coloring')
+    print('Starting False Color Script')
     main()
-    print('total runtime:',time.time()-t_overall)
+    print('total runtime: %s minutes' % ((time.time()-t_overall)/60))
 
 
 
