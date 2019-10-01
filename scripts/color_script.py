@@ -17,6 +17,7 @@ import copy
 import multiprocessing as mp
 import argparse
 import h5py as h5
+import time
 
 def main():
 
@@ -34,8 +35,10 @@ def main():
     filepath = args.filepath
     save_dir = args.savefolder
 
+
     #load data
-    datapath = os.path.join(filepath,filename)
+    datapath = filepath + os.sep + filename
+
     f = h5.File(datapath,'r')
 
     #downsampled data for flat fielding
@@ -47,7 +50,7 @@ def main():
     M_cyt,bkg_cyt = fc.getFlatField(cyto_ds)
 
     dataQueue = mp.Queue()
-    save_thread = mp.Process(target=saveProcess,args=dataQueue)
+    save_thread = mp.Process(target=saveProcess,args=[dataQueue])
     save_thread.start()
 
     #create reference to full res data
@@ -58,33 +61,40 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    nuclei_RGBsettings = [0.65, 0.85, 0.35]
-    cyto_RGB_settings = [0.05, 1.00, 0.544]
+    nuclei_RGBsettings = [0.54, 1.0, 0.35]
+    cyto_RGB_settings = [0.3, 1.00, 0.86]
 
     for k in range(nuclei_ds.shape[1]*16):
+        t_start = time.time()
 
-        if k % 50 == 0:
-            print('on section: ',k)
+        print('on section: ',k)
 
         #get image data from both channels in blocks that are multiples of tileSize
         #subtract background and reset values > 0 and < 2**16
-        nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]].astype(float)
+        print('Reading Data')
+        t_nuc = time.time()
+        nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],500+k,0:tileSize*M_nuc.shape[2]].astype(float)
         nuclei -= bkg_nuc
         nuclei = numpy.clip(nuclei,0,65535)
+        print('read time nuclei', time.time()-t_nuc)
 
-        cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]].astype(float)
-        cyto -= 3*bkg_cyt
+        t_cyt = time.time()
+        cyto = cyto_hires[0:tileSize*M_cyt.shape[0],500+k,0:tileSize*M_cyt.shape[2]].astype(float)
+        cyto -= bkg_cyt
         cyto = numpy.clip(cyto,0,65535)
+        print('read time cyto', time.time() - t_cyt)
 
         x0 = numpy.floor(k/tileSize)
         x1 = numpy.ceil(k/tileSize)
         x = k/tileSize
 
-        #sharpen images
+        # sharpen images
+        print('sharpening')
         nuclei = fc.sharpenImage(nuclei)
         cyto = fc.sharpenImage(cyto)
 
         #get background block
+        print('background block')
         if k < int(M_nuc.shape[1]*tileSize-tileSize):
             if k < int(tileSize/2):
                 C_nuc = M_nuc[:,0,:]
@@ -105,21 +115,26 @@ def main():
             C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
             C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
-        C_nuc = ndimage.interpolation.zoom(C_nuc, order = 1, mode = 'nearest')
+        print('interpolating')
+        C_nuc = ndimage.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
         # C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
 
-        C_cyt = ndimage.interpolation.zoom(C_cyt, order = 1, mode = 'nearest')
+        C_cyt = ndimage.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
         # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
 
+        print('False Coloring')
         RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGB_settings,
                                         nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
                                         run_normalization = True)
 
 
         #append data to queue
-        save_file = '{:0>6d}'.format(k) + '.tif'
+        save_file = '{:0>6d}'.format(k) + args.format
         message = [filepath,save_dir,save_file,RGB_image,None]
+        t0 = time.time()
         dataQueue.put(message)
+        print('transfer time:', time.time()-t0)
+        print('runtime:', time.time() - t_start)
 
 
     #stop data queue
@@ -129,8 +144,10 @@ def main():
     f.close()
 
 if __name__ == '__main__':
-    print('False Coloring')
+    t_overall = time.time()
+    print('Starting False Color Script')
     main()
+    print('total runtime: %s minutes' % ((time.time()-t_overall)/60))
 
 
 

@@ -16,6 +16,7 @@ import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as uitl
 import scipy.ndimage as nd
+from scipy import signal
 import cv2
 import numpy
 import h5py as hp
@@ -271,25 +272,44 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
     return RGB_image.astype(numpy.uint8)
 
+@cuda.jit
+def Convolve2d(image,kernel,output):
+    
+    row,col = cuda.grid(2)
+    
+    image_rows,image_cols = image.shape
+    
+    delta_r = kernel.shape[0]//2
+    delta_c = kernel.shape[1]//2
+    
+    if (row >= image_rows) or (col >= image_cols):
+        return
+    
+    tmp = 0
+    for i in range(kernel.shape[0]):
+        for j in range(kernel.shape[1]):
+            row_i = row - i + delta_r
+            col_j = col - j + delta_c
+            if (row_i>=0) and (row_i < image_rows):
+                if (col_j>=0) and (col_j < image_cols):
+                    tmp += kernel[i,j]*image[row_i,col_j]
+                    
+    output[row,col] = tmp 
+
 def sharpenImage(input_image,alpha = 0.5):
     #create kernels to amplify edges
-    horizontal = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
-    vertical = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
-    
+    vkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
+    hkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
+
     blocks = (32,32)
-    grid = (input_image.shape[0] // blocks[0] + 1, input_image.shape[1] // blocks[1] + 1)
+    grid = (input_image.shape[0]//blocks[0] + 1, input_image.shape[1]//blocks[1] + 1)
 
+    voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
+    houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
+    Convolve2d[grid,blocks](input_image,vkernel,voutput)
+    Convolve2d[grid,blocks](input_image,hkernel,houtput)
 
-    #create output arrays for each convolution
-    h_output = numpy.zeros(input_image.shape, dtype = numpy.float64)
-    v_output = numpy.zeros(input_image.shape, dtype = numpy.float64)
-
-    #cuda accelerated convolution of input image with each kernel
-    convolve2D[grid,blocks](copy.deepcopy(input_image), horizontal, h_output)
-    convolve2D[grid,blocks](copy.deepcopy(input_image), vertical, v_output)
-
-    #final sharpening of image
-    final_image = input_image + alpha*numpy.sqrt(h_output**2 + v_output**2)
+    final_image = input_image + 0.5*numpy.sqrt(voutput**2 + houtput**2)
     
     return final_image
 
@@ -301,42 +321,9 @@ def gaussianBlur(input_image,sigma):
 
     output_image = numpy.zeros(input_image.shape)
 
-    convolve2D[grid,blocks](copy.deepcopy(input_image), kernel, output_image)
+    Convolve2d[grid,blocks](copy.deepcopy(input_image), kernel, output_image)
 
     return output_image
-
-
-@cuda.jit
-def convolve2D(image,kernel,output_image):
-    #create iterators
-    row,col = cuda.grid(2)
-
-    #define iterator boundaries
-    image_rows, image_cols = image.shape
-
-    #ignore threads outside image
-    if (row >= image_rows) or (col >= image_cols):
-        return
-
-    #window size for computing result at i,j 
-    delta_R = kernel.shape[0]//2
-    delta_C = kernel.shape[1]//2
-
-    tmp = 0
-    for i in range(image.shape[0]):
-        for j in range(image.shape[1]):
-            # retult at i,j is:
-            # sum(i,j) mask[i,j]*image[row-i+delta_R,col-j+delta_C]
-            # where i,j iterate through the kernel
-            row_i = row - i + delta_R
-            col_j = col - j + delta_C
-
-            #only compute for indicies within image boundary
-            if (row_i >= 0) and (row_i < image_rows):
-                if (col_j >= 0) and (col_j < image_cols):
-                    tmp += kernel[i,j]*image[row_i,col_j]
-
-    output_image[row,col] = tmp
 
 def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
     """
@@ -462,7 +449,7 @@ def getFlatField(image,tileSize=256):
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
-    return flat_field, background
+    return flat_field, background/5
 
 
 
