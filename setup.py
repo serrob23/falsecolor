@@ -15,6 +15,6 @@ setup(name='FalseColor',
                         'h5py',
                         'functools'
                         ],
-    url = 'https://github.com/serrob23/falseColoring' 
+    url = 'https://github.com/serrob23/falseColoring', 
     author_email='serrob23@uw.edu',
     packages=['FalseColor'])
