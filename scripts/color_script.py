@@ -73,13 +73,13 @@ def main():
         #subtract background and reset values > 0 and < 2**16
         print('Reading Data')
         t_nuc = time.time()
-        nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],500+k,0:tileSize*M_nuc.shape[2]].astype(float)
+        nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]].astype(float)
         nuclei -= bkg_nuc
         nuclei = numpy.clip(nuclei,0,65535)
         print('read time nuclei', time.time()-t_nuc)
 
         t_cyt = time.time()
-        cyto = cyto_hires[0:tileSize*M_cyt.shape[0],500+k,0:tileSize*M_cyt.shape[2]].astype(float)
+        cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]].astype(float)
         cyto -= bkg_cyt
         cyto = numpy.clip(cyto,0,65535)
         print('read time cyto', time.time() - t_cyt)
