@@ -23,7 +23,6 @@ import h5py as hp
 from numba import cuda
 import math
 import copy
-import tensorflow as tf
 from astropy.convolution import Gaussian2DKernel
     
 def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
