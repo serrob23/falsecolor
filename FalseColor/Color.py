@@ -25,7 +25,8 @@ import math
 import copy
 from astropy.convolution import Gaussian2DKernel
     
-def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
+def falseColor(nuclei, cyto, channelIDs=['s00','s01'], 
+                            output_dtype=numpy.uint8):
     """
     imageSet : 3D numpy array
         dimmensions are [X,Y,C]
@@ -58,8 +59,8 @@ def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
     k_cytoplasm= constants_cyto['K']
     
     #execute background subtraction
-    nuclei = preProcess(imageSet[:,:,0])
-    cyto = preProcess(imageSet[:,:,1])
+    nuclei = preProcess(nuclei)
+    cyto = preProcess(cyto)
 
     RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
 
@@ -79,8 +80,10 @@ def falseColor(imageSet, channelIDs=['s00','s01'], output_dtype=numpy.uint8):
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
-def preProcess(image, thresh = 50):
+def preProcess(image, threshold = 50):
     """
+    Method used for background subtracting data with a fixed value
+
     image : 2d numpy array
         image for processing
 
@@ -166,11 +169,13 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
 @cuda.jit
 def rapidFieldDivision(image,flat_field,output):
     """
-    used for falseColoring when flat fielding has been done
+    used for falseColoring when flat field has been calculated
 
-    image : numpy array
+    image : numpy array written to GPU
 
-    flat_field : numpy array
+    flat_field : numpy array written to GPU
+
+    output : numpy array written to GPU
 
     """
     row,col = cuda.grid(2)
@@ -332,18 +337,19 @@ def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy
     
     beta_dict = {
                 #nuclear consants
-                's01' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
-                              'B' : 0.860,
-                              'thresh' : 500},
-                #cytoplasmic constants
                 's00' : {'K' : 0.017,
                              'R' : 0.544,
                              'G' : 1.000,
                              'B' : 0.050,
-                             'thresh' : 50}}
-
+                             'thresh' : 50},
+                             
+                #cytoplasmic constants               
+                's01' : {'K' : 0.008,
+                              'R' : 0.300,
+                              'G' : 1.000,
+                              'B' : 0.860,
+                              'thresh' : 500}}
+                
     constants = beta_dict[channelID]
     
     RGB_image = numpy.zeros((input_image.shape[0],input_image.shape[1],3))
@@ -363,13 +369,14 @@ def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy
     
     return RGB_image.astype(output_dtype)
 
-def combineFalseColoredChannels(input_image, norm_factor = 255, output_dtype = numpy.uint8):
-
-    nuclei,cytoplasm = input_image[0],input_image[1]
+def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
+    """
+    Use for combining false colored channels after single channel false color method
+    """
     
-    assert(cytoplasm.shape == nuclei.shape)
+    assert(cyto.shape == nuclei.shape)
  
-    RGB_image = numpy.multiply(cytoplasm/norm_factor,nuclei/norm_factor)
+    RGB_image = numpy.multiply(cyto/norm_factor,nuclei/norm_factor)
     RGB_image = numpy.multiply(RGB_image,norm_factor)
     
     return RGB_image.astype(output_dtype)
@@ -385,10 +392,6 @@ def adaptiveBinary(images, blocksize = 15,offset = 0):
             binary_img[i] = z > filt.threshold_local(filtered_z,blocksize,offset=offset)
         binary_img = binary_img.T
     return numpy.asarray(binary_img,dtype =int)
-    
-
-def medianBlur(images):
-    return nd.filters.median_filter(images,1)
 
 def tophat_filter(image):
     el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(51,51))
@@ -399,20 +402,20 @@ def filter_and_equalize(Image,kernel_size = 204):
     z = ex.equalize_adapthist(z,kernel_size=kernel_size)
     return util.img_as_uint(z)
 
-def denoiseImage(img):
+def denoiseImage(image):
     """
     Denoise image by subtracting laplacian of gaussian
     """
-    output_dtype = img.dtype
-    img_gaus = nd.filters.gaussian_filter(img,sigma=3)
+    output_dtype = image.dtype
+    img_gaus = nd.filters.gaussian_filter(image,sigma=3)
     img_log = nd.filters.laplace(img_gaus)#laplacian filter
-    denoised_img = img - img_log # noise subtraction
+    denoised_img = image - img_log # noise subtraction
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
 
-def getBackgroundLevels(imageSet, threshold = 50):
+def getBackgroundLevels(image, threshold = 50):
 
-    image_DS = numpy.sort(imageSet,axis=None)
+    image_DS = numpy.sort(image,axis=None)
 
     foreground_vals = image_DS[numpy.where(image_DS > threshold)]
 

@@ -133,6 +133,9 @@ def main():
         message = [filepath,save_dir,save_file,RGB_image,None]
         t0 = time.time()
         dataQueue.put(message)
+
+        nuclei = None
+        cyto = None
         print('transfer time:', time.time()-t0)
         print('runtime:', time.time() - t_start)
 
