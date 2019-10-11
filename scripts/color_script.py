@@ -61,8 +61,8 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    nuclei_RGBsettings = [0.54, 1.0, 0.35]
-    cyto_RGB_settings = [0.3, 1.00, 0.86]
+    nuclei_RGBsettings = [0.65, .85, 0.35]
+    cyto_RGB_settings = [0.05, 1.00, 0.54]
 
     for k in range(nuclei_ds.shape[1]*16):
         t_start = time.time()
