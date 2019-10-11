@@ -81,6 +81,7 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
     return RGB_image.astype(output_dtype)
 
 def getDefaultRGBSettings():
+    """returns empirically determined constants for nuclear/cyto channels"""
     nuclei_RGBsettings = [0.65, .85, 0.35]
     cyto_RGB_settings = [0.05, 1.00, 0.54]
 
