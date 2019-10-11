@@ -80,6 +80,13 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
+def getDefaultRGBSettings():
+    nuclei_RGBsettings = [0.65, .85, 0.35]
+    cyto_RGB_settings = [0.05, 1.00, 0.54]
+
+    settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+    return settings_dict
+
 def preProcess(image, threshold = 50):
     """
     Method used for background subtracting data with a fixed value
