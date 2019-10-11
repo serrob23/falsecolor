@@ -51,10 +51,8 @@ class DataObject(object):
             self.unloadPool()
                 
     
-    def loadTifImages(self,file_list,image_size,channel_ID):            
+    def loadTifImages(self,file_list):            
         try:
-            assert(type(image_size == tuple))
-            assert(len(image_size) > 0)
             file_list = sorted(file_list)
             file_names = []
             images = numpy.zeros((len(file_list),image_size[0],image_size[1]))
@@ -97,7 +95,6 @@ class DataObject(object):
         imageData = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
             dataset['t00000'][channelIDs[1]][str(dataID)]['cells']),axis=-1)
         
-        self.imageSet = numpy.moveaxis(imageData,0,1)
         print(self.imageSet.shape)
         imageData = None
     
