@@ -61,4 +61,6 @@ def saveProcess(queue):
                 io.imsave(file_savename,data)
                 print('save time: ', time.time() - t0)
 
+            message = None
+
 
