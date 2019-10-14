@@ -100,14 +100,14 @@ def preProcess(image, threshold = 50):
     """
 
     #background subtraction
-    image -= thresh
+    image -= threshold
 
     #no negative values
     image[image < 0] = 0
 
     #calculate normalization factor
     image = numpy.power(image,0.85)
-    image_mean = numpy.mean(image[image>thresh])*8
+    image_mean = numpy.mean(image[image>threshold])*8
 
     #convert into 8bit range
     processed_image = image*(65535/image_mean)*(255/65535)
