@@ -82,8 +82,10 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
 
 def getDefaultRGBSettings():
     """returns empirically determined constants for nuclear/cyto channels"""
-    nuclei_RGBsettings = [0.65, .85, 0.35]
-    cyto_RGB_settings = [0.05, 1.00, 0.54]
+    k_cyto = 0.9
+    k_nuclei = 0.6
+    nuclei_RGBsettings = [0.45*k_nuclei, .85*k_nuclei, 0.15*k_nuclei]
+    cyto_RGB_settings = [0.05*k_cyto, 1.00*k_cyto, 0.54*k_cyto]
 
     settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
