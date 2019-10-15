@@ -47,19 +47,15 @@ class DataObject(object):
                 
     
     def loadTifImages(self,file_list):            
-        try:
-            file_list = sorted(file_list)
-            file_names = []
-            images = []
+        file_list = sorted(file_list)
+        file_names = []
+        images = []
 
-            for i in range(len(file_list)):
-                images.append(tf.imread(file_list[i]))
-                file_names.append(z.split(os.sep)[-1])
+        for i in range(len(file_list)):
+            images.append(tf.imread(file_list[i]))
+            file_names.append(z.split(os.sep)[-1])
 
-            return np.asarray(images)
-        
-        except AssertionError:
-            print('Image_size must be tuple of form (m,n) where m and n are integers')
+        return np.asarray(images)
             
     def loadH5(self,folder,image_size = None,return_as_property=False):
         
@@ -87,11 +83,10 @@ class DataObject(object):
             dataset = self.loadH5(self.directory)
 
         #Create imageSet as a 4D array, from the loaded dataset
-        imageData = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
+        self.imageSet = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
             dataset['t00000'][channelIDs[1]][str(dataID)]['cells']),axis=-1)
         
         print(self.imageSet.shape)
-        imageData = None
     
     def setupProcessing(self,ncpus):
         self.pool = ProcessingPool(ncpus=ncpus)

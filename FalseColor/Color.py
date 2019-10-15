@@ -19,14 +19,15 @@ import h5py as hp
 from numba import cuda
 import math
     
-def falseColor(nuclei, cyto, channelIDs=['s00','s01'], 
+def falseColor(imageSet, channelIDs=['s00','s01'], 
                             output_dtype=numpy.uint8):
     """
+    imageSet : 3D numpy array
+        dimmensions are [X,Y,C]
+        for use with process images in FCdataobject
+
     false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
-
-    nuclei,cyto : 2D numpy arrays
-        data for processing
 
     channelIDs = list
         keys to grab settings from beta_dict
@@ -54,9 +55,11 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
                               }
 
     #assign constants for each channel
+    nuclei = imageSet[:,:,0]
     constants_nuclei = beta_dict[channelIDs[0]]
     k_nuclei = constants_nuclei['K']
 
+    cyto = imageSet[:,:,1]
     constants_cyto = beta_dict[channelIDs[1]]
     k_cytoplasm= constants_cyto['K']
     
