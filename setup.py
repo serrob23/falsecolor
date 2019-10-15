@@ -1,4 +1,4 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='FalseColor',
     version='0.1.0',
@@ -13,7 +13,8 @@ setup(name='FalseColor',
                         'numba',
                         'tifffile',
                         'h5py',
-                        'functools'
+                        'functools',
+                        'pathos',
                         ],
     url = 'https://github.com/serrob23/falseColoring', 
     author_email='serrob23@uw.edu',

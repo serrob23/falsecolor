@@ -61,8 +61,9 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    nuclei_RGBsettings = [0.65, .85, 0.35]
-    cyto_RGB_settings = [0.05, 1.00, 0.54]
+    settings_dict = fc.getDefaultRGBSettings()
+    nuclei_RGBsettings = settings_dict['nuclei']
+    cyto_RGBsettings = settings_dict['cyto']
 
     for k in range(nuclei_ds.shape[1]*16):
         t_start = time.time()
@@ -123,7 +124,7 @@ def main():
         # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
 
         print('False Coloring')
-        RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGB_settings,
+        RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
                                         nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
                                         run_normalization = True)
 

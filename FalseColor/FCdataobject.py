@@ -2,20 +2,15 @@
 DataObject for H&E False coloring
 
 Robert Serafin
-9/11/2019
+10/15/2019
 
 """
 
 import os
 import tifffile as tf
-import skimage.morphology as morph
-import skimage.filters as filt
 import numpy
-import scipy.ndimage as nd
-import skimage.feature as feat
 from pathos.multiprocessing import ProcessingPool
 from functools import partial
-import glob
 import time
 import h5py as hp
 import FalseColor.Color as fc
@@ -55,13 +50,13 @@ class DataObject(object):
         try:
             file_list = sorted(file_list)
             file_names = []
-            images = numpy.zeros((len(file_list),image_size[0],image_size[1]))
+            images = []
 
-            for i,z in enumerate(file_list):
-                images[i] = tf.imread(z)
+            for i in range(len(file_list)):
+                images.append(tf.imread(file_list[i]))
                 file_names.append(z.split(os.sep)[-1])
 
-            return images
+            return np.asarray(images)
         
         except AssertionError:
             print('Image_size must be tuple of form (m,n) where m and n are integers')

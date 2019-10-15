@@ -3,36 +3,38 @@
 Methods for H&E False coloring
 
 Robert Serafin
-9/11/2019
+10/15/2019
 
 """
 
 
 import os
 import scipy.ndimage as nd
-import skimage.feature as feat
-import skimage.morphology as morph
 import skimage.filters as filt
 import skimage.exposure as ex
-import skimage.util as uitl
-import scipy.ndimage as nd
-from scipy import signal
+import skimage.util as util
 import cv2
 import numpy
 import h5py as hp
 from numba import cuda
 import math
-import copy
-from astropy.convolution import Gaussian2DKernel
     
 def falseColor(nuclei, cyto, channelIDs=['s00','s01'], 
                             output_dtype=numpy.uint8):
     """
-    imageSet : 3D numpy array
-        dimmensions are [X,Y,C]
-
     false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
+
+    nuclei,cyto : 2D numpy arrays
+        data for processing
+
+    channelIDs = list
+        keys to grab settings from beta_dict
+        defaults: s00 : nuclei
+                  s01 : cyto
+
+    output_dtype : np.uint8
+        output datatype for final RGB image
 
     """
     beta_dict = {
@@ -81,9 +83,15 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
     return RGB_image.astype(output_dtype)
 
 def getDefaultRGBSettings():
-    """returns empirically determined constants for nuclear/cyto channels"""
-    nuclei_RGBsettings = [0.65, .85, 0.35]
-    cyto_RGB_settings = [0.05, 1.00, 0.54]
+    """returns empirically determined constants for nuclear/cyto channels
+
+    Note: these settings currently only optimized for flat field method in
+    rapidFalseColor
+    """
+    k_cyto = 0.9
+    k_nuclei = 0.6
+    nuclei_RGBsettings = [0.45*k_nuclei, .85*k_nuclei, 0.15*k_nuclei]
+    cyto_RGB_settings = [0.05*k_cyto, 1.00*k_cyto, 0.54*k_cyto]
 
     settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
@@ -239,11 +247,14 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     nuc_global_mem = cuda.to_device(nuclei)
 
     #run background subtraction or normalization for nuclei
+
+    #use flat fielding
     if run_normalization:
         nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         nuc_norm_mem = cuda.to_device(nuc_normfactor)
         rapidFieldDivision[blockspergrid,TPB](nuc_global_mem,nuc_norm_mem,pre_nuc_output)
 
+    #otherwise use standard background subtraction
     else:
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
@@ -253,12 +264,15 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
     cyto_global_mem = cuda.to_device(cyto)
 
-    #run background subtraction for cyto
+    #run background subtraction or normalization for cyto
+
+    #use flat fielding
     if run_normalization:
         cyto_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
         rapidFieldDivision[blockspergrid,TPB](cyto_global_mem,cyto_norm_mem,pre_cyto_output)
 
+    # otherwise use standard background subtraction
     else:
         rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
                                                 cyto_normfactor,pre_cyto_output)
@@ -286,7 +300,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
 @cuda.jit
 def Convolve2d(image,kernel,output):
-    
+
+    #create iterator
     row,col = cuda.grid(2)
     
     image_rows,image_cols = image.shape
@@ -294,12 +309,14 @@ def Convolve2d(image,kernel,output):
     delta_r = kernel.shape[0]//2
     delta_c = kernel.shape[1]//2
     
+    #ignore rows/cols outside image
     if (row >= image_rows) or (col >= image_cols):
         return
     
     tmp = 0
     for i in range(kernel.shape[0]):
         for j in range(kernel.shape[1]):
+            #result should be sum of kernel*image as kernel is varied
             row_i = row - i + delta_r
             col_j = col - j + delta_c
             if (row_i>=0) and (row_i < image_rows):
@@ -310,35 +327,68 @@ def Convolve2d(image,kernel,output):
 
 def sharpenImage(input_image,alpha = 0.5):
     #create kernels to amplify edges
-    vkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
-    hkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
+    hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
+    vkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
 
+    #set grid/threads for GPU
     blocks = (32,32)
     grid = (input_image.shape[0]//blocks[0] + 1, input_image.shape[1]//blocks[1] + 1)
 
+    #run convolution
     voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
     houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
     Convolve2d[grid,blocks](input_image,vkernel,voutput)
     Convolve2d[grid,blocks](input_image,hkernel,houtput)
 
+    #calculate final result
     final_image = input_image + 0.5*numpy.sqrt(voutput**2 + houtput**2)
     
     return final_image
 
-def gaussianBlur(input_image,sigma):
-    kernel = numpy.asarray(Gaussian2DKernel(sigma))
+def getBackgroundLevels(image, threshold = 50):
 
-    blocks = (32,32)
-    grid = (input_image.shape[0] // blocks[0] + 1, input_image.shape[1] // blocks[1] + 1)
+    image_DS = numpy.sort(image,axis=None)
 
-    output_image = numpy.zeros(input_image.shape)
+    foreground_vals = image_DS[numpy.where(image_DS > threshold)]
 
-    Convolve2d[grid,blocks](copy.deepcopy(input_image), kernel, output_image)
+    hi_val = foreground_vals[int(numpy.round(len(foreground_vals)*0.95))]
 
-    return output_image
+    background = hi_val/5
+
+    return hi_val,background
+
+def getFlatField(image,tileSize=256):
+    #returns downsample flat field of image data and calculated background levels
+
+    midrange,background = getBackgroundLevels(image)
+    
+    rows_max = int(numpy.floor(image.shape[0]/16)*16)
+    cols_max = int(numpy.floor(image.shape[2]/16)*16)
+    stacks_max = int(numpy.floor(image.shape[1]/16)*16)
+
+
+    rows = numpy.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
+    cols = numpy.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
+    
+    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
+    
+    for i in range(1,len(rows)):
+        for j in range(1,len(stacks)):
+            for k in range(1,len(cols)):
+
+                ROI_0 = image[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
+                
+                fkg_ind = numpy.where(ROI_0 > background)
+                if fkg_ind[0].size==0:
+                    Mtemp = midrange
+                else:
+                    Mtemp = numpy.median(ROI_0[fkg_ind])
+                flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
+    return flat_field, background/5
 
 def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
-    """
+    """depreciated
     single channel false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
     """
@@ -378,7 +428,7 @@ def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy
     return RGB_image.astype(output_dtype)
 
 def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
-    """
+    """depreciated
     Use for combining false colored channels after single channel false color method
     """
     
@@ -421,45 +471,7 @@ def denoiseImage(image):
     denoised_img[denoised_img < 0] = 0 # no negative pixels
     return denoised_img.astype(output_dtype)
 
-def getBackgroundLevels(image, threshold = 50):
 
-    image_DS = numpy.sort(image,axis=None)
-
-    foreground_vals = image_DS[numpy.where(image_DS > threshold)]
-
-    hi_val = foreground_vals[int(numpy.round(len(foreground_vals)*0.95))]
-
-    background = hi_val/5
-
-    return hi_val,background
-
-def getFlatField(image,tileSize=256):
-    #returns flat field of image and calculated background levels
-    midrange,background = getBackgroundLevels(image)
-    
-    rows_max = int(numpy.floor(image.shape[0]/16)*16)
-    cols_max = int(numpy.floor(image.shape[2]/16)*16)
-    stacks_max = int(numpy.floor(image.shape[1]/16)*16)
-
-    rows = numpy.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
-    cols = numpy.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
-    stacks = numpy.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
-    
-    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
-    
-    for i in range(1,len(rows)):
-        for j in range(1,len(stacks)):
-            for k in range(1,len(cols)):
-
-                ROI_0 = image[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
-                
-                fkg_ind = numpy.where(ROI_0 > background)
-                if fkg_ind[0].size==0:
-                    Mtemp = midrange
-                else:
-                    Mtemp = numpy.median(ROI_0[fkg_ind])
-                flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
-    return flat_field, background/5
 
 
 
