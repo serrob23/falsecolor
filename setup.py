@@ -1,7 +1,7 @@
 from distutils.core import setup
 
 setup(name='FalseColor',
-    version='0.1.0',
+    version='0.1.1',
     description='Methods for H&E pseudo coloring of grayscale images',
     author='Robert Serafin',
     install_requires =[
@@ -13,7 +13,8 @@ setup(name='FalseColor',
                         'numba',
                         'tifffile',
                         'h5py',
-                        'functools'
+                        'functools',
+                        'pathos',
                         ],
     url = 'https://github.com/serrob23/falseColoring', 
     author_email='serrob23@uw.edu',
