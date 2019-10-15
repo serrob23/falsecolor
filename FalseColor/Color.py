@@ -83,13 +83,6 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
-def FC_runnable_wrapper(imageSet):
-    """
-    for use with FCDataobject, only necessary in windows due to pathos namespace bug
-    """
-    nuclei = imageSet[:,:,0]
-    cyto = imageSet[:,:,0]
-
 def getDefaultRGBSettings():
     """returns empirically determined constants for nuclear/cyto channels"""
     k_cyto = 0.9
