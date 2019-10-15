@@ -25,11 +25,12 @@ import math
 import copy
 from astropy.convolution import Gaussian2DKernel
     
-def falseColor(nuclei, cyto, channelIDs=['s00','s01'], 
+def falseColor(imageSet, channelIDs=['s00','s01'], 
                             output_dtype=numpy.uint8):
     """
     imageSet : 3D numpy array
         dimmensions are [X,Y,C]
+        for use with process images in FCdataobject
 
     false coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
@@ -52,9 +53,11 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
                               }
 
     #assign constants for each channel
+    nuclei = imageSet[:,:,0]
     constants_nuclei = beta_dict[channelIDs[0]]
     k_nuclei = constants_nuclei['K']
 
+    cyto = imageSet[:,:,1]
     constants_cyto = beta_dict[channelIDs[1]]
     k_cytoplasm= constants_cyto['K']
     
@@ -80,10 +83,19 @@ def falseColor(nuclei, cyto, channelIDs=['s00','s01'],
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
+def FC_runnable_wrapper(imageSet):
+    """
+    for use with FCDataobject, only necessary in windows due to pathos namespace bug
+    """
+    nuclei = imageSet[:,:,0]
+    cyto = imageSet[:,:,0]
+
 def getDefaultRGBSettings():
     """returns empirically determined constants for nuclear/cyto channels"""
-    nuclei_RGBsettings = [0.65, .85, 0.35]
-    cyto_RGB_settings = [0.05, 1.00, 0.54]
+    k_cyto = 0.9
+    k_nuclei = 0.6
+    nuclei_RGBsettings = [0.45*k_nuclei, .85*k_nuclei, 0.15*k_nuclei]
+    cyto_RGB_settings = [0.05*k_cyto, 1.00*k_cyto, 0.54*k_cyto]
 
     settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
