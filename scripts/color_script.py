@@ -6,13 +6,10 @@ Rob Serafin
 """
 
 import os
-import glob
 import FalseColor.Color as fc
 from FalseColor.SaveThread import saveProcess
 import numpy 
 from scipy import ndimage
-import skimage.filters as filt
-import cv2
 import copy
 import multiprocessing as mp
 import argparse
