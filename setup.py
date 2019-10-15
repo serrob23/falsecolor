@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='FalseColor',
-    version='0.1.0',
+    version='0.1.1',
     description='Methods for H&E pseudo coloring of grayscale images',
     author='Robert Serafin',
     install_requires =[
