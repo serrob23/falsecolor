@@ -55,13 +55,13 @@ class DataObject(object):
         try:
             file_list = sorted(file_list)
             file_names = []
-            images = numpy.zeros((len(file_list),image_size[0],image_size[1]))
+            images = []
 
-            for i,z in enumerate(file_list):
-                images[i] = tf.imread(z)
+            for i in range(len(file_list)):
+                images.append(tf.imread(file_list[i]))
                 file_names.append(z.split(os.sep)[-1])
 
-            return images
+            return np.asarray(images)
         
         except AssertionError:
             print('Image_size must be tuple of form (m,n) where m and n are integers')
