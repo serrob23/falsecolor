@@ -92,11 +92,10 @@ class DataObject(object):
             dataset = self.loadH5(self.directory)
 
         #Create imageSet as a 4D array, from the loaded dataset
-        imageData = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
+        self.imageSet = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
             dataset['t00000'][channelIDs[1]][str(dataID)]['cells']),axis=-1)
         
         print(self.imageSet.shape)
-        imageData = None
     
     def setupProcessing(self,ncpus):
         self.pool = ProcessingPool(ncpus=ncpus)
