@@ -114,10 +114,10 @@ def getDefaultRGBSettings():
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
     """
-    k_cyto = 0.9
-    k_nuclei = 0.6
-    nuclei_RGBsettings = [0.45*k_nuclei, .85*k_nuclei, 0.15*k_nuclei]
-    cyto_RGB_settings = [0.05*k_cyto, 1.00*k_cyto, 0.54*k_cyto]
+    k_cyto = 0.8
+    k_nuclei = 0.37
+    nuclei_RGBsettings = [0.13, 0.37, 0.0185]
+    cyto_RGB_settings = [0.24, 0.8, 0.688]
 
     settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
