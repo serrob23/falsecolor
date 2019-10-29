@@ -148,7 +148,8 @@ def main():
             print('read time nuclei', time.time()-t_nuc)
 
             t_cyt = time.time()
-            cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]].astype(float)
+            cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]]
+            cyto = cyto.astype(float)
             cyto -= 3*bkg_cyt
             cyto = numpy.clip(cyto,0,65535)
             print('read time cyto', time.time() - t_cyt)
@@ -179,8 +180,6 @@ def main():
 
                     cyto_norm0 = M_cyt[:,int(x0),:]
                     cyto_norm1 = M_cyt[:,int(x1),:]
-                    # C_0 = y0 + (x - x0)*(y1 - y0)/(x1 - x0)
-                    # diff = C_cyt - C_nuc
 
                     C_nuc = nuc_norm0 + (x-x0)*(nuc_norm1 - nuc_norm0)/(x1-x0)
                     C_cyt = cyto_norm0 + (x-x0)*(cyto_norm1 - cyto_norm0)/(x1-x0)
@@ -190,10 +189,8 @@ def main():
 
             print('interpolating')
             C_nuc = ndimage.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
-            # C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
 
             C_cyt = ndimage.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
-            # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
 
             print('False Coloring')
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
