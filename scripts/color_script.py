@@ -41,6 +41,27 @@ import argparse
 import h5py as h5
 import time
 
+def getDefaultRGBSettings(gain = None):
+    """returns empirically determined constants for nuclear/cyto channels
+
+    Note: these settings currently only optimized for flat field method in
+    rapidFalseColor
+    beta2 = 0.05;
+    beta4 = 1.00;
+    beta6 = 0.544;
+
+    beta1 = 0.65;
+    beta3 = 0.85;
+    beta5 = 0.35;
+    """
+    k_cyto = 1.0
+    k_nuclei = 1.0
+    nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
+    cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
+
+    settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+    return settings_dict
+
 def main():
 
     parser = argparse.ArgumentParser()
@@ -50,9 +71,13 @@ def main():
     parser.add_argument("savefolder",help='imaris file')
     parser.add_argument("format",type=str,help='imagris file')
     parser.add_argument("stop_k",type = int,help='imagris file')
+    parser.add_argument("start_k",type = int,help = 'imagris file')
     args = parser.parse_args()
 
+    start_k = args.start_k
     stop_k = args.stop_k
+    stop_k += start_k
+    print(start_k,stop_k)
 
 
     #get path info
@@ -86,12 +111,14 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    settings_dict = fc.getDefaultRGBSettings()
+    settings_dict = getDefaultRGBSettings()
     nuclei_RGBsettings = settings_dict['nuclei']
     cyto_RGBsettings = settings_dict['cyto']
+    print(nuclei_RGBsettings)
+    print(cyto_RGBsettings)
 
 
-    for k in range(nuclei_ds.shape[1]*16):
+    for k in range(start_k,stop_k):
         if k == stop_k:
             break
         else:
@@ -137,7 +164,7 @@ def main():
                     C_cyt = M_cyt[:,int(x1),:]
                 else:
                     C_nuc = M_nuc[:,int(x0),:]
-                    C_cyt = M_cyt[:,ing(x1),:]
+                    C_cyt = M_cyt[:,int(x1),:]
                     diff = C_cyt - C_nuc
 
                     C_nuc += (x-x0)*diff/(x1-x0)
@@ -155,7 +182,8 @@ def main():
 
             print('False Coloring')
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
-                                            nuc_normfactor = C_nuc, cyto_normfactor = C_cyt,
+                                            nuc_normfactor = 2.72*C_nuc, 
+                                            cyto_normfactor = 1.0*C_cyt,
                                             run_normalization = True)
 
 
