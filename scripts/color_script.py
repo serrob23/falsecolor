@@ -41,7 +41,7 @@ import argparse
 import h5py as h5
 import time
 
-def getDefaultRGBSettings(gain = None):
+def getDefaultRGBSettings():
     """returns empirically determined constants for nuclear/cyto channels
 
     Note: these settings currently only optimized for flat field method in
@@ -70,14 +70,11 @@ def main():
     parser.add_argument("alpha", type = float, help='imaris file')
     parser.add_argument("savefolder",help='imaris file')
     parser.add_argument("format",type=str,help='imagris file')
-    parser.add_argument("stop_k",type = int,help='imagris file')
     parser.add_argument("start_k",type = int,help = 'imagris file')
+    parser.add_argument("stop_k",type = int,help='imagris file')
     args = parser.parse_args()
 
-    start_k = args.start_k
-    stop_k = args.stop_k
-    stop_k += start_k
-    print(start_k,stop_k)
+
 
 
     #get path info
@@ -94,6 +91,19 @@ def main():
     #downsampled data for flat fielding
     nuclei_ds = f['/t00000/s00/4/cells']
     cyto_ds = f['/t00000/s01/4/cells']
+
+    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k on
+    #will be false colored.
+    start_k = args.start_k
+    stop_k = args.stop_k
+
+    if stop_k != 0:
+        stop_k += start_k
+
+    elif stop_k == 0:
+        stop_k = nuclei_ds.shape[1]*16
+
+    print(start_k,stop_k)
 
     #calculate flat field
     M_nuc,bkg_nuc = fc.getFlatField(nuclei_ds)

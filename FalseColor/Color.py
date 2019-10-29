@@ -108,7 +108,7 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
-def getDefaultRGBSettings(gain = None):
+def getDefaultRGBSettings():
     """returns empirically determined constants for nuclear/cyto channels
 
     Note: these settings currently only optimized for flat field method in
