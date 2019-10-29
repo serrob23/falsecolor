@@ -55,7 +55,7 @@ def getDefaultRGBSettings():
     beta5 = 0.35;
     """
     k_cyto = 1.0
-    k_nuclei = 1.0
+    k_nuclei = .85
     nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
     cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
 
@@ -141,14 +141,16 @@ def main():
             #subtract background and reset values > 0 and < 2**16
             print('Reading Data')
             t_nuc = time.time()
-            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]].astype(float)
-            nuclei -= bkg_nuc
+            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]]
+            nuclei = nuclei.astype(float)
+            nuclei -= 0.5*bkg_nuc
             nuclei = numpy.clip(nuclei,0,65535)
             print('read time nuclei', time.time()-t_nuc)
 
             t_cyt = time.time()
-            cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]].astype(float)
-            cyto -= bkg_cyt
+            cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]]
+            cyto = cyto.astype(float)
+            cyto -= 3*bkg_cyt
             cyto = numpy.clip(cyto,0,65535)
             print('read time cyto', time.time() - t_cyt)
 
@@ -169,31 +171,31 @@ def main():
                     C_cyt = M_cyt[:,0,:]
 
                 elif x0==x1:
-                    #TODO: ask AK about x0 vs x1 in C_nuc
+                    #TODO: ask AG about x0 vs x1 in C_nuc
                     C_nuc = M_nuc[:,int(x1),:]
                     C_cyt = M_cyt[:,int(x1),:]
                 else:
-                    C_nuc = M_nuc[:,int(x0),:]
-                    C_cyt = M_cyt[:,int(x1),:]
-                    diff = C_cyt - C_nuc
+                    nuc_norm0 = M_nuc[:,int(x0),:]
+                    nuc_norm1 = M_nuc[:,int(x1),:]
 
-                    C_nuc += (x-x0)*diff/(x1-x0)
-                    C_cyt = copy.deepcopy(C_nuc)
+                    cyto_norm0 = M_cyt[:,int(x0),:]
+                    cyto_norm1 = M_cyt[:,int(x1),:]
+
+                    C_nuc = nuc_norm0 + (x-x0)*(nuc_norm1 - nuc_norm0)/(x1-x0)
+                    C_cyt = cyto_norm0 + (x-x0)*(cyto_norm1 - cyto_norm0)/(x1-x0)
             else:
                 C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
                 C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
             print('interpolating')
             C_nuc = ndimage.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
-            # C_nuc = 4.72*ndimage.filters.gaussian_filter(C_nuc,100)
 
             C_cyt = ndimage.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
-            # C_cyt = 4.72*ndimage.filters.gaussian_filter(C_cyt,100)
 
             print('False Coloring')
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
-                                            nuc_normfactor = 2.72*C_nuc, 
-                                            cyto_normfactor = 1.0*C_cyt,
+                                            nuc_normfactor = 1.0*C_nuc, 
+                                            cyto_normfactor = 3.72*C_cyt,
                                             run_normalization = True)
 
 
