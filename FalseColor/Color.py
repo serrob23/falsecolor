@@ -113,11 +113,18 @@ def getDefaultRGBSettings():
 
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
+    beta2 = 0.05;
+    beta4 = 1.00;
+    beta6 = 0.544;
+
+    beta1 = 0.65;
+    beta3 = 0.85;
+    beta5 = 0.35;
     """
-    k_cyto = 0.9
-    k_nuclei = 0.6
-    nuclei_RGBsettings = [0.45*k_nuclei, .85*k_nuclei, 0.15*k_nuclei]
-    cyto_RGB_settings = [0.05*k_cyto, 1.00*k_cyto, 0.54*k_cyto]
+    k_cyto = 1.0
+    k_nuclei = 1.0
+    nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
+    cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
 
     settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
@@ -294,7 +301,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     #use flat fielding
     if run_normalization:
-        cyto_normfactor = numpy.ascontiguousarray(nuc_normfactor)
+        cyto_normfactor = numpy.ascontiguousarray(cyto_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
         rapidFieldDivision[blockspergrid,TPB](cyto_global_mem,cyto_norm_mem,pre_cyto_output)
 
