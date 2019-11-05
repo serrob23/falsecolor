@@ -42,7 +42,13 @@ Several methods within Color.py are setup with GPU acceleration using numba.cuda
 (See Example/GPU examples.ipynb)
 
 ```python
-#set color levels for false coloring using background subtraction
+#Set color levels for false coloring using background subtraction
+#Using Defaults:
+settings_dict = fc.getDefaultRGBsettings()
+nuclei_RGBsettings = settings_dict['nuclei']
+cyto_RGBsettings = settings_dict['cyto']
+
+#Or Levels can be set manually, provided they are in the following order
 nuclei_RGBsettings = [R,G,B] # list of floats (0.0:1.0) for color levels in nuclear channel
 cyto_RGBsettings = [R,G,B] # list of floats (0.0:1.0) for color levels in cyto channel
 
