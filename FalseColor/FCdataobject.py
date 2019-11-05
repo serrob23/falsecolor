@@ -28,13 +28,12 @@ import tifffile as tf
 import numpy
 from pathos.multiprocessing import ProcessingPool
 from functools import partial
-import time
 import h5py as hp
 import FalseColor.Color as fc
 
 class DataObject(object):
     def __init__(self, directory, imageSet = None,
-                 setupPool = False, ncpus = 2):
+                 setupPool = False, ncpus = 2, tissue_type = 'Default'):
         """
         Object to store image data in a convienient way for batch processing
         
@@ -54,39 +53,54 @@ class DataObject(object):
         
         # object base directory
         self.directory = directory
-        
+
+        #object data to process
         self.imageSet = imageSet
         
+        #dedicated cpus
         if setupPool:
             self.setupProcessing(ncpus = ncpus)
         else:
             self.unloadPool()
+
+        #Tissue type for RGB settings
+        self.tissue = tissue_type
                 
     
-    def loadTifImages(self,file_list):            
+    def loadTifImages(self, file_list):            
         file_list = sorted(file_list)
-        file_names = []
         images = []
 
         for i in range(len(file_list)):
             images.append(tf.imread(file_list[i]))
-            file_names.append(z.split(os.sep)[-1])
 
         return np.asarray(images)
             
-    def loadH5(self,folder,dataID,channelIDs = ['s00','s01']):
+    def loadH5(self, folder, dataID, 
+                            channelIDs = ['s00', 's01'],
+                            start_index = 0, stop_index = 0):
 
-        data_name = [os.path.join(folder,f) for f in os.listdir(folder) if f.endswith('h5')]
+        data_name = [os.path.join(folder, f) for f in os.listdir(folder) if f.endswith('h5')]
         
-        with hp.File(data_name[0],'r') as f:
+        if start_index == stop_index:
 
-            nuclei = f['t00000'][channelIDs[0]][str(dataID)]['cells'][:]
-            cyto = f['t00000'][channelIDs[1]][str(dataID)]['cells'][:]
-        f.close()
+            with hp.File(data_name[0], 'r') as f:
+                nuclei = f['t00000'][channelIDs[0]][str(dataID)]['cells'][:]
+                cyto = f['t00000'][channelIDs[1]][str(dataID)]['cells'][:]
+            f.close()
 
-        return nuclei,cyto
+        else:
+
+            with hp.File(data_name[0], 'r') as f:
+                nuclei = f['t00000'][channelIDs[0]][str(dataID)]['cells'][start_index:stop_index]
+                cyto = f['t00000'][channelIDs[0]][str(dataID)]['cells'][start_index:stop_index]
+            f.close()
+
+        return nuclei, cyto
         
-    def setupH5data(self,folder=None,dataID = 0,channelIDs = ['s00','s01']):
+    def setupH5data(self, folder = None, dataID = 0,
+                            channelIDs = ['s00','s01'],
+                            start_index = 0, stop_index = 0):
 
         if folder:
             dataset = self.loadH5(folder, dataID=dataID, channelIDs=channelIDs)
@@ -122,22 +136,22 @@ class DataObject(object):
             
             """
             if self.pool is None:
-                self.setupProcessing(ncpus=4)
+                self.setupProcessing(ncpus = 4)
             
             func,kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
-            print(func,kwargs,imageSet.shape)
+            print(func, kwargs, imageSet.shape)
  
             processed_images = []
             # method = partial(runnable,**kwargs)
 
             if type(kwargs) == dict:
-                processed_images.append(self.pool.map(func,imageSet,**kwargs))
+                processed_images.append(self.pool.map(func, imageSet, **kwargs))
             
             else:
-                processed_images.append(self.pool.map(func,imageSet))
+                processed_images.append(self.pool.map(func, imageSet))
 
             if dtype is None:
                 return numpy.asarray(processed_images)
             
             else:
-                return numpy.asarray(processed_images,dtype = dtype)
+                return numpy.asarray(processed_images, dtype = dtype)
