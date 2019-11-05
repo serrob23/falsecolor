@@ -170,19 +170,20 @@ def rapid_preProcess(image,background,norm_factor,output):
     if row < output.shape[0] and col < output.shape[1]:
 
         #subtract background and raise to factor
-        tmp = (image[row,col] - background)**0.85
-
-        #normalize to 8bit range
-        tmp = image[row,col]*(65535/norm_factor)*(255/65535)
-        output[row,col] =tmp
+        tmp = image[row,col] - background
 
         #remove negative values
         if tmp < 0:
             output[row,col] = 0
 
+        #normalize to 8bit range
+        else:
+            tmp = (tmp**0.85)*(65535/norm_factor)*(255/65535)
+            output[row,col] = tmp
+
 @cuda.jit #direct GPU compiling
-def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
-                        cyto_settings):
+def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
+                        cyto_settings, k_nuclei, k_cyto):
     #TODO: implement array base normalization
     """
     nuclei : numpy array
@@ -203,7 +204,7 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
 
     #iterate through image and assign pixel values
     if row < output.shape[0] and col < output.shape[1]:
-        tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyto_settings
+        tmp = nuclei[row,col]*nuc_settings*k_nuclei + cyto[row,col]*cyto_settings*k_cyto
         output[row,col] = 255*math.exp(-1*tmp)
 
 @cuda.jit
@@ -260,6 +261,14 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         used for GPU threads
     """
 
+    #ensure float dtype
+    nuclei = nuclei.astype(float)
+    cyto = cyto.astype(float)
+
+    #set mulciplicative constants, changes on flat fielding vs background subtraction
+    k_nuclei = 1.0
+    k_cyto = 1.0
+
     #create blockgrid for gpu
     blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
     blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
@@ -280,6 +289,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     #otherwise use standard background subtraction
     else:
+        k_nuclei = 0.08
+        nuc_background = fc.getBackgroundLevels(nuclei)[1]
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
     
@@ -298,6 +309,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     # otherwise use standard background subtraction
     else:
+        k_cyto = 0.012
+        cyto_background = fc.getBackgroundLevels(cyto)[1]
         rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
                                                 cyto_normfactor,pre_cyto_output)
     
@@ -314,7 +327,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
         #get 8bit frame
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
-                                                nuc_settings[i],cyto_settings[i])
+                                                nuc_settings[i],cyto_settings[i],
+                                                k_nuclei, k_cyto)
         
         RGB_image[i] = output_global.copy_to_host()
 
