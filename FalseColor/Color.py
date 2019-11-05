@@ -113,7 +113,7 @@ def getDefaultRGBSettings():
     beta5 = 0.35;
     """
     k_cyto = 1.0
-    k_nuclei = 1.0
+    k_nuclei = 0.85
     nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
     cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
 
@@ -381,19 +381,19 @@ def getBackgroundLevels(image, threshold = 50):
 
     return hi_val,background
 
-def getFlatField(image,tileSize=256):
+def getFlatField(image,tileSize=256,block_size = 16):
     #returns downsample flat field of image data and calculated background levels
 
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(numpy.floor(image.shape[0]/16)*16)
-    cols_max = int(numpy.floor(image.shape[2]/16)*16)
-    stacks_max = int(numpy.floor(image.shape[1]/16)*16)
+    rows_max = int(numpy.floor(image.shape[0]/block_size)*block_size)
+    cols_max = int(numpy.floor(image.shape[2]/block_size)*block_size)
+    stacks_max = int(numpy.floor(image.shape[1]/block_size)*block_size)
 
 
-    rows = numpy.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
-    cols = numpy.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
-    stacks = numpy.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
+    rows = numpy.arange(0, rows_max+int(tileSize/block_size), int(tileSize/block_size))
+    cols = numpy.arange(0, cols_max+int(tileSize/block_size), int(tileSize/block_size))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/block_size), int(tileSize/block_size))
     
     flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
     
