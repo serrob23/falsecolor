@@ -56,7 +56,7 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     """
     beta_dict = {
                 #constants for nuclear channel
-                'K_nuclei' : 0.07,
+                'K_nuclei' : 0.08,
 
                 #constants for cytoplasmic channel
                 'K_cyto' : 0.0120}
@@ -290,7 +290,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #otherwise use standard background subtraction
     else:
         k_nuclei = 0.08
-        nuc_background = fc.getBackgroundLevels(nuclei)[1]
+        nuc_background = getBackgroundLevels(nuclei)[1]
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
     
@@ -310,7 +310,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     # otherwise use standard background subtraction
     else:
         k_cyto = 0.012
-        cyto_background = fc.getBackgroundLevels(cyto)[1]
+        cyto_background = getBackgroundLevels(cyto)[1]
         rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
                                                 cyto_normfactor,pre_cyto_output)
     
