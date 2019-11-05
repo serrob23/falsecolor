@@ -46,7 +46,8 @@ Several methods within Color.py are setup with GPU acceleration using numba.cuda
 #Using Defaults:
 settings_dict = fc.getDefaultRGBsettings()
 nuclei_RGBsettings = settings_dict['nuclei']
-cyto_RGBsettings = settings_dict['cyto']```
+cyto_RGBsettings = settings_dict['cyto']
+```
 
 ```python
 #Or Levels can be set manually, provided they are in the following order
