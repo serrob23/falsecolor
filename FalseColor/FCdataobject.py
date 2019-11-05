@@ -18,7 +18,7 @@
 # 
 #===============================================================================
 
-Robert Serafin
+Rob Serafin
 11/4/2019
 
 """
@@ -74,34 +74,28 @@ class DataObject(object):
 
         return np.asarray(images)
             
-    def loadH5(self,folder,image_size = None,return_as_property=False):
-        
+    def loadH5(self,folder,dataID,channelIDs = ['s00','s01']):
+
         data_name = [os.path.join(folder,f) for f in os.listdir(folder) if f.endswith('h5')]
         
-        H5_dataset = hp.File(data_name[0],'r')
+        with hp.File(data_name[0],'r') as f:
 
-        print(list(H5_dataset.keys()))
+            nuclei = f['t00000'][channelIDs[0]][str(dataID)]['cells'][:]
+            cyto = f['t00000'][channelIDs[1]][str(dataID)]['cells'][:]
+        f.close()
 
-        if return_as_property:
-            self.H5_dataset = H5_dataset
-
-        else:
-            return H5_dataset
+        return nuclei,cyto
         
-    def setupH5data(self,folder=None,dataID = 0,channelIDs = None):
-
-        if channelIDs is None:
-            channelIDs = ['s00','s01']
+    def setupH5data(self,folder=None,dataID = 0,channelIDs = ['s00','s01']):
 
         if folder:
-            dataset = self.loadH5(folder)
+            dataset = self.loadH5(folder, dataID=dataID, channelIDs=channelIDs)
 
         else:
-            dataset = self.loadH5(self.directory)
+            dataset = self.loadH5(self.directory, dataID=dataID, channelIDs=channelIDs)
 
         #Create imageSet as a 4D array, from the loaded dataset
-        self.imageSet = numpy.stack((dataset['t00000'][channelIDs[0]][str(dataID)]['cells'],
-            dataset['t00000'][channelIDs[1]][str(dataID)]['cells']),axis=-1)
+        self.imageSet = numpy.stack((dataset[0], dataset[1]),axis=-1)
         
         print(self.imageSet.shape)
     

@@ -18,7 +18,7 @@
 # 
 #===============================================================================
 
-Robert Serafin
+Rob Serafin
 11/4/2019
 
 """
@@ -50,50 +50,48 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
         defaults: s00 : nuclei
                   s01 : cyto
 
-    output_dtype : np.uint8
+    output_dtype : numpy.uint8
         output datatype for final RGB image
 
     """
     beta_dict = {
                 #constants for nuclear channel
-                's00' : {'K' : 0.017,
-                             'R' : 0.544,
-                             'G' : 1.000,
-                             'B' : 0.050,
-                             'thresh' : 50},
+                'K_nuclei' : 0.08,
 
                 #constants for cytoplasmic channel
-                's01' : {'K' : 0.008,
-                              'R' : 0.30,
-                              'G' : 1.0,
-                              'B' : 0.860,
-                              'thresh' : 500}
-                              }
+                'K_cyto' : 0.0120}
 
-    #assign constants for each channel
-    nuclei = imageSet[:,:,0]
-    constants_nuclei = beta_dict[channelIDs[0]]
-    k_nuclei = constants_nuclei['K']
+    #returns dictionary with settings for each channel
+    #keys are: nuclei, cyto
+    #entries are lists in order of RGB constants
+    settings = getDefaultRGBSettings()
 
-    cyto = imageSet[:,:,1]
-    constants_cyto = beta_dict[channelIDs[1]]
-    k_cytoplasm= constants_cyto['K']
+    nuclei = imageSet[:,:,0].astype(float)
+    constants_nuclei = settings['nuclei']
+    k_nuclei = beta_dict['K_nuclei']
+
+    cyto = imageSet[:,:,1].astype(float)
+    constants_cyto = settings['cyto']
+    k_cytoplasm= beta_dict['K_cyto']
     
     #execute background subtraction
-    nuclei = preProcess(nuclei)
-    cyto = preProcess(cyto)
+    nuc_threshold = getBackgroundLevels(nuclei)[1]
+    nuclei = preProcess(nuclei, threshold = nuc_threshold)
+    
+    cyto_threshold = getBackgroundLevels(cyto)[1]
+    cyto = preProcess(cyto, threshold = cyto_threshold)
 
     RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
 
     #assign RGB values from grayscale images
-    R = numpy.multiply(numpy.exp(-constants_cyto['R']*k_cytoplasm*cyto),
-                                    numpy.exp(-constants_nuclei['R']*k_nuclei*nuclei))
+    R = numpy.multiply(numpy.exp(-constants_cyto[0]*k_cytoplasm*cyto),
+                                    numpy.exp(-constants_nuclei[0]*k_nuclei*nuclei))
 
-    G = numpy.multiply(numpy.exp(-constants_cyto['G']*k_cytoplasm*cyto),
-                                    numpy.exp(-constants_nuclei['G']*k_nuclei*nuclei))
+    G = numpy.multiply(numpy.exp(-constants_cyto[1]*k_cytoplasm*cyto),
+                                    numpy.exp(-constants_nuclei[1]*k_nuclei*nuclei))
 
-    B = numpy.multiply(numpy.exp(-constants_cyto['B']*k_cytoplasm*cyto),
-                                    numpy.exp(-constants_nuclei['B']*k_nuclei*nuclei))
+    B = numpy.multiply(numpy.exp(-constants_cyto[2]*k_cytoplasm*cyto),
+                                    numpy.exp(-constants_nuclei[2]*k_nuclei*nuclei))
 
     #rescale to 8bit range
     RGB_image[:,:,0] = (R*255)
@@ -115,7 +113,7 @@ def getDefaultRGBSettings():
     beta5 = 0.35;
     """
     k_cyto = 1.0
-    k_nuclei = 1.0
+    k_nuclei = 0.85
     nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
     cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
 
@@ -172,19 +170,20 @@ def rapid_preProcess(image,background,norm_factor,output):
     if row < output.shape[0] and col < output.shape[1]:
 
         #subtract background and raise to factor
-        tmp = (image[row,col] - background)**0.85
-
-        #normalize to 8bit range
-        tmp = image[row,col]*(65535/norm_factor)*(255/65535)
-        output[row,col] =tmp
+        tmp = image[row,col] - background
 
         #remove negative values
         if tmp < 0:
             output[row,col] = 0
 
+        #normalize to 8bit range
+        else:
+            tmp = (tmp**0.85)*(65535/norm_factor)*(255/65535)
+            output[row,col] = tmp
+
 @cuda.jit #direct GPU compiling
-def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
-                        cyto_settings):
+def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
+                        cyto_settings, k_nuclei, k_cyto):
     #TODO: implement array base normalization
     """
     nuclei : numpy array
@@ -205,7 +204,7 @@ def rapid_getRGBframe(nuclei,cyto,output,nuc_settings,
 
     #iterate through image and assign pixel values
     if row < output.shape[0] and col < output.shape[1]:
-        tmp = nuclei[row,col]*nuc_settings + cyto[row,col]*cyto_settings
+        tmp = nuclei[row,col]*nuc_settings*k_nuclei + cyto[row,col]*cyto_settings*k_cyto
         output[row,col] = 255*math.exp(-1*tmp)
 
 @cuda.jit
@@ -262,6 +261,14 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         used for GPU threads
     """
 
+    #ensure float dtype
+    nuclei = nuclei.astype(float)
+    cyto = cyto.astype(float)
+
+    #set mulciplicative constants, changes on flat fielding vs background subtraction
+    k_nuclei = 1.0
+    k_cyto = 1.0
+
     #create blockgrid for gpu
     blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
     blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
@@ -282,6 +289,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     #otherwise use standard background subtraction
     else:
+        k_nuclei = 0.08
+        nuc_background = getBackgroundLevels(nuclei)[1]
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
     
@@ -300,6 +309,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     # otherwise use standard background subtraction
     else:
+        k_cyto = 0.012
+        cyto_background = getBackgroundLevels(cyto)[1]
         rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
                                                 cyto_normfactor,pre_cyto_output)
     
@@ -316,7 +327,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
         #get 8bit frame
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
-                                                nuc_settings[i],cyto_settings[i])
+                                                nuc_settings[i],cyto_settings[i],
+                                                k_nuclei, k_cyto)
         
         RGB_image[i] = output_global.copy_to_host()
 
@@ -383,19 +395,19 @@ def getBackgroundLevels(image, threshold = 50):
 
     return hi_val,background
 
-def getFlatField(image,tileSize=256):
+def getFlatField(image,tileSize=256,block_size = 16):
     #returns downsample flat field of image data and calculated background levels
 
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(numpy.floor(image.shape[0]/16)*16)
-    cols_max = int(numpy.floor(image.shape[2]/16)*16)
-    stacks_max = int(numpy.floor(image.shape[1]/16)*16)
+    rows_max = int(numpy.floor(image.shape[0]/block_size)*block_size)
+    cols_max = int(numpy.floor(image.shape[2]/block_size)*block_size)
+    stacks_max = int(numpy.floor(image.shape[1]/block_size)*block_size)
 
 
-    rows = numpy.arange(0, rows_max+int(tileSize/16), int(tileSize/16))
-    cols = numpy.arange(0, cols_max+int(tileSize/16), int(tileSize/16))
-    stacks = numpy.arange(0, stacks_max+int(tileSize/16), int(tileSize/16))
+    rows = numpy.arange(0, rows_max+int(tileSize/block_size), int(tileSize/block_size))
+    cols = numpy.arange(0, cols_max+int(tileSize/block_size), int(tileSize/block_size))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/block_size), int(tileSize/block_size))
     
     flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
     
@@ -464,41 +476,3 @@ def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = 
     RGB_image = numpy.multiply(RGB_image,norm_factor)
     
     return RGB_image.astype(output_dtype)
-
-def adaptiveBinary(images, blocksize = 15,offset = 0):
-    if len(images.shape) == 2:
-        filtered_img = medianBlur(images)
-        binary_img = images > filt.threshold_local(filtered_img,blocksize,offset = offset)
-    else:
-        binary_img = numpy.zeros(images.T.shape)
-        for i,z in enumerate(images.T):
-            filtered_z = gaussianSmoothing(medianBlur(z))
-            binary_img[i] = z > filt.threshold_local(filtered_z,blocksize,offset=offset)
-        binary_img = binary_img.T
-    return numpy.asarray(binary_img,dtype =int)
-
-def tophat_filter(image):
-    el = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(51,51))
-    return cv2.morphologyEx(image,cv2.MORPH_TOPHAT,el)
-
-def filter_and_equalize(Image,kernel_size = 204):
-    z = tophat_filter(Image)
-    z = ex.equalize_adapthist(z,kernel_size=kernel_size)
-    return util.img_as_uint(z)
-
-def denoiseImage(image):
-    """
-    Denoise image by subtracting laplacian of gaussian
-    """
-    output_dtype = image.dtype
-    img_gaus = nd.filters.gaussian_filter(image,sigma=3)
-    img_log = nd.filters.laplace(img_gaus)#laplacian filter
-    denoised_img = image - img_log # noise subtraction
-    denoised_img[denoised_img < 0] = 0 # no negative pixels
-    return denoised_img.astype(output_dtype)
-
-
-
-
-
-
