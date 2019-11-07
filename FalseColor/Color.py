@@ -38,12 +38,12 @@ import math
 def falseColor(imageSet, channelIDs=['s00','s01'], 
                             output_dtype=numpy.uint8):
     """
+    False coloring based on:
+        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
+
     imageSet : 3D numpy array
         dimmensions are [X,Y,C]
         for use with process images in FCdataobject
-
-    false coloring based on:
-        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
 
     channelIDs = list
         keys to grab settings from beta_dict
@@ -143,7 +143,7 @@ def preProcess(image, threshold = 50):
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
-    """Background subtraction optimized for gpu
+    """Background subtraction optimized for GPU
 
     image : 2d numpy array, dtype = int16
         image for background subtraction
@@ -181,19 +181,27 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
                         cyto_settings, k_nuclei, k_cyto):
     #TODO: implement array base normalization
     """
-    nuclei : numpy array
-        nuclear channel image
-        already pre processed
+    nuclei : 2D numpy array 
+        dtype = float
+        Nuclear channel image, already pre processed
 
-    cyto : numpy array
-        cyto channel image
-        already pre processed
+    cyto : 2d numpy array
+        dtype = float
+        Cytoplasm channel image, already pre processed.
         
     nuc_settings : float
         RGB constant for nuclear channel
     
     cyto_settings : float
         RGB constant for cyto channel
+
+    k_nuclei : float
+        Additional multiplicative constant for nuclear channel. Eventually will get removed once 
+        flat fielding is in place for all pseudo coloring methods.
+
+    k_cyto: float
+        Additional multiplicative constant for cytoplasmic channel. Eventually will get removed once 
+        flat fielding is in place for all pseudo coloring methods.        
     """
     row,col = cuda.grid(2)
 
@@ -205,13 +213,14 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
 @cuda.jit
 def rapidFieldDivision(image,flat_field,output):
     """
-    used for falseColoring when flat field has been calculated
+    Used for rapidFalseColoring when flat field has been calculated
 
     image : numpy array written to GPU
 
     flat_field : numpy array written to GPU
 
     output : numpy array written to GPU
+        result from computation
 
     """
     row,col = cuda.grid(2)
@@ -226,24 +235,24 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    run_normalization = False):
     """
     nuclei : numpy array
-        nuclear channel image
+        Nuclear channel image
         
     cyto : numpy array
-        cyto channel image
+        Cytoplasm channel image
         
     nuc_settings : list
-        settings of RGB constants for nuclear channel
+        Settings of RGB constants for nuclear channel. Should be in order R, G, B.
     
     cyto_settings : list
-        settings of RGB constants for cyto channel
+        Settings of RGB constants for cytoplasm channel. Should be in order R, G, B.
 
     nuc_normfactor : int or array
-        defaults to empirically determined constant for background subtraction,
-        else should be a numpy array representing the flat field
+        Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
+        numpy array representing the true flat field image.
 
     cyto_normfactor : int or array
-        defaults to empirically determined constant for background subtraction,
-        else should be a numpy array representing the flat field
+        Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
+        numpy array representing the true flat field image.
 
     nuc_background : int or float
         defaults to 50, background threshold for subtraction
@@ -333,6 +342,19 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
 @cuda.jit
 def Convolve2d(image,kernel,output):
+    """
+    GPU accelerated 2D convolution 
+
+    image : 2D numpy array
+        Image for processing, written to GPU.
+
+    kernel : 2D numpy array
+        kernel to convolve image with, written to GPU
+
+    output : 2D numpy array
+        Output array, storing result of convolution, written to GPU.
+
+    """
 
     #create iterator
     row,col = cuda.grid(2)
@@ -359,6 +381,15 @@ def Convolve2d(image,kernel,output):
     output[row,col] = tmp 
 
 def sharpenImage(input_image,alpha = 0.5):
+    """
+    Image sharpening algorithm to amplify edges.
+
+    input_image : 2D numpy array
+        Image to run sharpening algorithm on
+
+    alpha : float or int
+        Multiplicative constant for final result.
+    """
     #create kernels to amplify edges
     hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
     vkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
