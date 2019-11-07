@@ -81,22 +81,17 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     cyto_threshold = getBackgroundLevels(cyto)[1]
     cyto = preProcess(cyto, threshold = cyto_threshold)
 
-    RGB_image = numpy.zeros((nuclei.shape[0],nuclei.shape[1],3))
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
 
-    #assign RGB values from grayscale images
-    R = numpy.multiply(numpy.exp(-constants_cyto[0]*k_cytoplasm*cyto),
-                                    numpy.exp(-constants_nuclei[0]*k_nuclei*nuclei))
+    #iterate throough RGB constants and execute image multiplication
+    for i in range(len(RGB_image)):
+        RGB_image[i] = 255*numpy.multiply(numpy.exp(-constants_cyto[i]*k_cytoplasm*cyto),
+                                        numpy.exp(-constants_nuclei[i]*k_nuclei*nuclei))
 
-    G = numpy.multiply(numpy.exp(-constants_cyto[1]*k_cytoplasm*cyto),
-                                    numpy.exp(-constants_nuclei[1]*k_nuclei*nuclei))
-
-    B = numpy.multiply(numpy.exp(-constants_cyto[2]*k_cytoplasm*cyto),
-                                    numpy.exp(-constants_nuclei[2]*k_nuclei*nuclei))
+    #reshape to [X,Y,C]
+    RGB_image = numpy.moveaxis(RGB_image,0,-1)
 
     #rescale to 8bit range
-    RGB_image[:,:,0] = (R*255)
-    RGB_image[:,:,1] = (G*255)
-    RGB_image[:,:,2] = (B*255)
     return RGB_image.astype(output_dtype)
 
 def getDefaultRGBSettings():
