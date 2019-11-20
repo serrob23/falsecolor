@@ -2,7 +2,11 @@
 #===============================================================================
 # 
 #  License: GPL
-# 
+#
+#
+#  Copyright (c) 2019 Rob Serafin, Liu Lab, 
+#  The University of Washington Department of Mechanical Engineering  
+#
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License 2
 #  as published by the Free Software Foundation.
@@ -18,12 +22,9 @@
 # 
 #===============================================================================
 
-
-
-Script for rapid false coloring large datasets
-
 Rob Serafin
-09/26/2019
+11/20/2019
+
 """
 
 import os
