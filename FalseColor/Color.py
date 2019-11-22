@@ -37,7 +37,6 @@ import skimage.morphology as morph
 from skimage.color import rgb2hed
 import cv2
 import numpy
-import h5py as hp
 from numba import cuda, njit
 import math
     
@@ -157,7 +156,7 @@ def preProcess(image, threshold = 50):
     Returns
     -------
 
-    processed_image :  numpy array
+    processed_image : 2D numpy array
         Background subtracted image. 
     """
 
@@ -602,7 +601,8 @@ def deconvolveColors(image):
     ----------
 
     image : 3D numpy array
-        RGB image in the format [X, Y, C] where the hematoxylin and eosin channels are to be separted
+        RGB image in the format [X, Y, C] where the hematoxylin and eosin channels 
+        are to be separted.
 
     Returns
     -------
@@ -623,6 +623,65 @@ def deconvolveColors(image):
     eosin = separted_image[:,:,1]
 
     return hematoxylin, eosin
+
+
+def segmentNuclei(image, return3D = False):
+    """
+    
+    Grabs binary mask of nuclei from H&E image
+
+    Parameters
+    ----------
+
+    image : 3D numpy array 
+        H&E stained RGB image in the form [X, Y, C]
+
+    return3D : bool, default = False
+        Return 3D version of mask
+
+
+    Returns
+    -------
+
+    binary_mask : 2D or 3D numpy array
+        Binary mask of segmented nuclei
+
+    """
+
+    #separate channels
+    nuclei, cyto = deconvolveColors(image)
+
+    #median filter nuclei for optimized otsu threshold
+    median_filtered_nuclei = filt.median(nuclei)
+
+    #calculate threshold and create initial binary mask
+    threshold = filt.threshold_otsu(median_filtered_nuclei)
+    binarized_nuclei = (median_filtered_nuclei > threshold).astype(int)
+
+    #remove small objects
+    labeled_mask = morph.label(binarized_nuclei)
+    shape_filtered_mask = morph.remove_small_objects(labeled_mask)
+
+    #create final mask and return object
+    if return3D:
+
+        binary_mask = numpy.ones(image.shape, dtype = int)
+
+        for i in range(binary_mask.shape[-1]):
+
+            binary_mask[:,:,i] *= (shape_filtered_mask > 0).astype(int)
+
+        #return 3D array
+        return binary_mask
+
+    else:
+
+        binary_mask = (shape_filtered_mask > 0).astype(int)
+
+        #return 2D array
+        return binary_mask
+
+
 
 
 def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
