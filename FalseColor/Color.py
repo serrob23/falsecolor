@@ -33,6 +33,8 @@ import scipy.ndimage as nd
 import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as util
+import skimage.morphology as morph
+from skimage.color import rgb2hed
 import cv2
 import numpy
 import h5py as hp
@@ -45,6 +47,9 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     False coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
 
+
+    Parameters
+    ----------
     imageSet : 3D numpy array
         dimmensions are [X,Y,C]
         for use with process images in FCdataobject
@@ -56,6 +61,12 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
 
     output_dtype : numpy.uint8
         output datatype for final RGB image
+
+
+    Returns
+    -------
+    RGB_image : numpy array
+        Combined false colored image in the standard RGB format [X, Y, C]
 
     """
     beta_dict = {
@@ -99,7 +110,18 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     return RGB_image.astype(output_dtype)
 
 def getDefaultRGBSettings():
+
     """returns empirically determined constants for nuclear/cyto channels
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+    settings_dict : dict
+        Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
+        derived RGB constants for false coloring.
 
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
@@ -123,11 +145,20 @@ def preProcess(image, threshold = 50):
     """
     Method used for background subtracting data with a fixed value
 
-    image : 2d numpy array
+    Parameters
+    ----------
+
+    image : 2D numpy array
         image for processing
 
     threshold : int
         background level to subtract
+
+    Returns
+    -------
+
+    processed_image :  numpy array
+        Background subtracted image. 
     """
 
     #background subtraction
@@ -147,7 +178,11 @@ def preProcess(image, threshold = 50):
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
-    """Background subtraction optimized for GPU
+    """
+    Background subtraction optimized for GPU, used by rapidFalseColor
+
+    Parameters
+    ----------
 
     image : 2d numpy array, dtype = int16
         image for background subtraction
@@ -185,6 +220,10 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
                         cyto_settings, k_nuclei, k_cyto):
     #TODO: implement array base normalization
     """
+    GPU based exponential false coloring operation. Used by rapidFalseColor()
+
+    Parameters
+    ----------
     nuclei : 2D numpy array 
         dtype = float
         Nuclear channel image, already pre processed
@@ -217,7 +256,10 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
 @cuda.jit
 def rapidFieldDivision(image,flat_field,output):
     """
-    Used for rapidFalseColoring when flat field has been calculated
+    Used for rapidFalseColoring() when flat field has been calculated
+
+    Parameters
+    ----------
 
     image : numpy array written to GPU
 
@@ -238,6 +280,10 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    nuc_background = 50, cyto_background = 50,
                    run_normalization = False):
     """
+
+
+    Parameters
+    ----------
     nuclei : numpy array
         Nuclear channel image
         
@@ -267,6 +313,13 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads)
         used for GPU threads
+
+    Returns
+    -------
+
+    RGB_image : 3D numpy array
+        Combined false colored image in the standard RGB format [X, Y, C]
+
     """
 
     #ensure float dtype
@@ -347,6 +400,10 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 @cuda.jit
 def Convolve2d(image,kernel,output):
     """
+    GPU based 2d convolution method
+
+    Parameters
+    ----------
     GPU accelerated 2D convolution 
 
     image : 2D numpy array
@@ -388,11 +445,20 @@ def sharpenImage(input_image,alpha = 0.5):
     """
     Image sharpening algorithm to amplify edges.
 
+    Parameters
+    ----------
+
     input_image : 2D numpy array
         Image to run sharpening algorithm on
 
     alpha : float or int
         Multiplicative constant for final result.
+
+    Returns
+    --------
+
+    final_image : 2D numpy array
+        The sum of the input image and the resulting convolutions
     """
     #create kernels to amplify edges
     hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
@@ -414,6 +480,27 @@ def sharpenImage(input_image,alpha = 0.5):
     return final_image
 
 def getBackgroundLevels(image, threshold = 50):
+    """
+    Calculate foreground and background values based on image statistics, background is currently
+    set to be 20% of foreground
+
+    Parameters
+    ----------
+
+    image : 2D numpy array
+
+    threshold : int
+        threshold above which is counted as foreground
+
+    Returns
+    -------
+
+    hi_val : int
+        Foreground values
+
+    background : int
+        Background value
+    """
 
     image_DS = numpy.sort(image,axis=None)
 
@@ -425,19 +512,31 @@ def getBackgroundLevels(image, threshold = 50):
 
     return hi_val,background
 
-def getFlatField(image,tileSize=256,block_size = 16):
-    #returns downsample flat field of image data and calculated background levels
+def getFlatField(image,tileSize=256,blockSize = 16):
+
+    """
+    Returns downsampled flat field of image data and calculated background levels
+
+    Parameters
+    ----------
+
+    image : 2D or 3D numpy array
+
+    tileSize : int
+
+    blockSize : int
+    """
 
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(numpy.floor(image.shape[0]/block_size)*block_size)
-    cols_max = int(numpy.floor(image.shape[2]/block_size)*block_size)
-    stacks_max = int(numpy.floor(image.shape[1]/block_size)*block_size)
+    rows_max = int(numpy.floor(image.shape[0]/blockSize)*blockSize)
+    cols_max = int(numpy.floor(image.shape[2]/blockSize)*blockSize)
+    stacks_max = int(numpy.floor(image.shape[1]/blockSize)*blockSize)
 
 
-    rows = numpy.arange(0, rows_max+int(tileSize/block_size), int(tileSize/block_size))
-    cols = numpy.arange(0, cols_max+int(tileSize/block_size), int(tileSize/block_size))
-    stacks = numpy.arange(0, stacks_max+int(tileSize/block_size), int(tileSize/block_size))
+    rows = numpy.arange(0, rows_max+int(tileSize/blockSize), int(tileSize/blockSize))
+    cols = numpy.arange(0, cols_max+int(tileSize/blockSize), int(tileSize/blockSize))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), int(tileSize/blockSize))
     
     flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
     
