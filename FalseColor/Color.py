@@ -594,6 +594,37 @@ def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy
     
     return RGB_image.astype(output_dtype)
 
+def deconvolveColors(image):
+    """
+    Separates H&E channels from an RGB image using skimage.color.rgb2hed method
+
+    Parameters
+    ----------
+
+    image : 3D numpy array
+        RGB image in the format [X, Y, C] where the hematoxylin and eosin channels are to be separted
+
+    Returns
+    -------
+
+    hematoxylin : 2D numpy array
+        nuclear channel deconvolved from RGB image
+
+
+    eosin : 2D numpy array
+        cytoplasm channel deconvolved from RGB image
+
+    """
+
+    separated_image = rgb2hed(image)
+
+    hematoxylin = separated_image[:,:,0]
+
+    eosin = separted_image[:,:,1]
+
+    return hematoxylin, eosin
+
+
 def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
     """depreciated
     Use for combining false colored channels after single channel false color method
