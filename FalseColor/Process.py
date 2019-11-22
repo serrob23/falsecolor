@@ -139,7 +139,6 @@ def saveRGBStats(image_stats,folder,filename):
 
     Returns
     -------
-
     """
 
     savepath = os.path.join(folder,filename)

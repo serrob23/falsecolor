@@ -31,6 +31,7 @@ import tifffile as tif
 import numpy
 from skimage import io
 import time
+from FalseColor import Process
 
 
 def saveProcess(queue):
@@ -51,6 +52,9 @@ def saveProcess(queue):
 
                 data : numpy array
                     image to save
+
+                do_stats : bool, False
+                    whether to save RGB statistics, defaults to False
 
                 token : None or str
                     token will be a str when thread stop is called
