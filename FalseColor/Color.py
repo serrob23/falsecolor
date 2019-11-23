@@ -628,7 +628,7 @@ def deconvolveColors(image):
 def segmentNuclei(image, return3D = False):
     """
     
-    Grabs binary mask of nuclei from H&E image
+    Grabs binary mask of nuclei from H&E image using color deconvolution. 
 
     Parameters
     ----------
@@ -638,7 +638,6 @@ def segmentNuclei(image, return3D = False):
 
     return3D : bool, default = False
         Return 3D version of mask
-
 
     Returns
     -------
