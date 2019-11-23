@@ -620,7 +620,7 @@ def deconvolveColors(image):
 
     hematoxylin = separated_image[:,:,0]
 
-    eosin = separted_image[:,:,1]
+    eosin = separated_image[:,:,1]
 
     return hematoxylin, eosin
 
