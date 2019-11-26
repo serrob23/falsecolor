@@ -63,7 +63,7 @@ pseudo_colored_data = fc.rapidFalseColor(nuclei,cyto,
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 
-## Licence 
+## License 
 GNU Affero General Public License v3.0
 
 Copyright (c) [2019] [Robert Serafin]
