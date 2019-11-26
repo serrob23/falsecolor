@@ -145,8 +145,8 @@ def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     H_cyto = sortImage(cyto[:,:,0], mask_val = hue_mask_val, greater_mode = True)
     S_cyto = sortImage(cyto[:,:,1], mask_val = sat_mask_val, greater_mode = True)
 
-    image_stats = {'nuclei' = {'Hue' : H_nuc, 'Saturation' : S_nuc},
-                    'cyto' = {'Hue' : H_cyto, 'Saturation' : S_cyto}}
+    image_stats = {'nuclei' : {'Hue' : H_nuc, 'Saturation' : S_nuc},
+                    'cyto' : {'Hue' : H_cyto, 'Saturation' : S_cyto}}
 
     image_stats['nuclei']['H_median'] = numpy.median(H_nuc)
     image_stats['nuclei']['H_10th'] = numpy.percentile(H_nuc, 10)
