@@ -160,7 +160,7 @@ def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     image_stats['cyto']['H_10th'] = numpy.percentile(H_cyto, 10)
     image_stats['cyto']['H_90th'] = numpy.percentile(H_cyto, 90)
 
-    image_stats['cyto']['S_median'] = numpy.medain(S_cyto)
+    image_stats['cyto']['S_median'] = numpy.median(S_cyto)
     image_stats['cyto']['S_10th'] = numpy.percentile(S_cyto, 10)
     image_stats['cyto']['S_90th'] = numpy.percentile(S_cyto, 90)
 
