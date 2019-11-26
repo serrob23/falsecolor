@@ -164,7 +164,7 @@ def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     image_stats['cyto']['S_10th'] = numpy.percentile(S_cyto, 10)
     image_stats['cyto']['S_90th'] = numpy.percentile(S_cyto, 90)
 
-    return image_Stats
+    return image_stats
 
 def saveImageStats(image_stats,folder,filename, RGB = True):
     """
