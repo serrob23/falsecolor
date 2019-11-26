@@ -32,6 +32,7 @@ import scipy.ndimage as nd
 import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as util
+from skimage import color
 import cv2
 import numpy
 import h5py as hp
@@ -40,7 +41,7 @@ import json
 
 
 @njit
-def sortImage(image, mask_val = 255):
+def sortImage(image, mask_val = 255, greater_mode = False):
     """
     Method for sorting image pixel values excluding a high value threshold. Used by getRGBStats to 
     get a 1D array for pixel values less than saturated value.
@@ -54,21 +55,30 @@ def sortImage(image, mask_val = 255):
     mask_val : int
         High threshold over which pixel values will be ignored
 
+    greater_mode: bool
+        default = False, whether to filter out values less than mask_val
+
 
     Returns
     -------
     pixel_set : 1D numpy array
         Pixel values contained in image which are under the mask value.
-
     """
     pixel_set = []
 
     #Ravel image and sort through item by item
     image_list = image.ravel()
     for item in image_list:
-        if item < mask_val:
-            #append to pixel set if value is under threshold
-            pixel_set.append(item)
+        if not greater_mode:
+            if item < mask_val:
+                #append to pixel set if value is under threshold
+                pixel_set.append(item)
+        elif greater_mode: 
+            if item > mask_val:
+                pixel_set.append(item)
+        else:
+            if item != mask_val:
+                pixel_set.append(item)
     return numpy.asarray(pixel_set)
 
 def getRGBStats(image, mask_val = 255):
@@ -103,7 +113,7 @@ def getRGBStats(image, mask_val = 255):
     """
     R = {'data' : sortImage(image[:,:,0], mask_val = mask_val)}
     G = {'data' : sortImage(image[:,:,1], mask_val = mask_val)}
-    B = {'data' : sortImage(image[:,:,1], mask_val = mask_val)}
+    B = {'data' : sortImage(image[:,:,2], mask_val = mask_val)}
     
     R['median'] = numpy.median(R['data'])
     G['median'] = numpy.median(G['data'])
@@ -122,7 +132,41 @@ def getRGBStats(image, mask_val = 255):
 
     return image_stats
 
-def saveRGBStats(image_stats,folder,filename):
+def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
+                        color_change = True):
+
+    if color_change:
+        nuclei = color.rgb2hsv(nuclei)
+        cyto = color.rgb2hsv(cyto)
+
+    H_nuc = sortImage(nuclei[:,:,0], mask_val = hue_mask_val, greater_mode = True)
+    S_nuc = sortImage(nuclei[:,:,1], mask_val = sat_mask_val, greater_mode = True)
+    
+    H_cyto = sortImage(cyto[:,:,0], mask_val = hue_mask_val, greater_mode = True)
+    S_cyto = sortImage(cyto[:,:,1], mask_val = sat_mask_val, greater_mode = True)
+
+    image_stats = {'nuclei' = {'Hue' : H_nuc, 'Saturation' : S_nuc},
+                    'cyto' = {'Hue' : H_cyto, 'Saturation' : S_cyto}}
+
+    image_stats['nuclei']['H_median'] = numpy.median(H_nuc)
+    image_stats['nuclei']['H_10th'] = numpy.percentile(H_nuc, 10)
+    image_stats['nuclei']['H_90th'] = numpy.percentile(H_nuc, 90)
+
+    image_stats['nuclei']['S_median'] = numpy.median(S_nuc)
+    image_stats['nuclei']['S_10th'] = numpy.percentile(S_nuc, 10)
+    image_stats['nuclei']['S_90th'] = numpy.percentile(S_nuc, 90)
+
+    image_stats['cyto']['H_median'] = numpy.median(H_cyto)
+    image_stats['cyto']['H_10th'] = numpy.percentile(H_cyto, 10)
+    image_stats['cyto']['H_90th'] = numpy.percentile(H_cyto, 90)
+
+    image_stats['cyto']['S_median'] = numpy.medain(S_cyto)
+    image_stats['cyto']['S_10th'] = numpy.percentile(S_cyto, 10)
+    image_stats['cyto']['S_90th'] = numpy.percentile(S_cyto, 90)
+
+    return image_Stats
+
+def saveImageStats(image_stats,folder,filename, RGB = True):
     """
     Parameters
     ----------
@@ -143,4 +187,8 @@ def saveRGBStats(image_stats,folder,filename):
 
     savepath = os.path.join(folder,filename)
 
-    numpy.savez(savepath, R = image_stats['R'], G = image_stats['G'], B = image_stats['B'])
+    if RGB:
+        numpy.savez(savepath, R = image_stats['R'], G = image_stats['G'], B = image_stats['B'])
+
+    else:
+        numpy.savez(savepath, nuclei = image_stats['nuclei'], cyto = image_stats['cyto'])
