@@ -33,6 +33,7 @@ import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as util
 from skimage import color
+import FalseColor.Color as fc
 import cv2
 import numpy
 import h5py as hp
@@ -132,21 +133,27 @@ def getRGBStats(image, mask_val = 255):
 
     return image_stats
 
-def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
+def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0, 
+                        val_mask_value = 0,
                         color_change = True):
 
     if color_change:
+        """
+        TODO: fix but with hsv transfer of segmented images
+        """
         nuclei = color.rgb2hsv(nuclei)
         cyto = color.rgb2hsv(cyto)
 
     H_nuc = sortImage(nuclei[:,:,0], mask_val = hue_mask_value, greater_mode = True)
     S_nuc = sortImage(nuclei[:,:,1], mask_val = sat_mask_value, greater_mode = True)
+    V_nuc = sortImage(nuclei[:,:,2], mask_val = val_mask_value, greater_mode = True)
     
     H_cyto = sortImage(cyto[:,:,0], mask_val = hue_mask_value, greater_mode = True)
     S_cyto = sortImage(cyto[:,:,1], mask_val = sat_mask_value, greater_mode = True)
+    V_cyto = sortImage(cyto[:,:,2], mask_val = val_mask_value, greater_mode = True)
 
-    image_stats = {'nuclei' : {'Hue' : H_nuc, 'Saturation' : S_nuc},
-                    'cyto' : {'Hue' : H_cyto, 'Saturation' : S_cyto}}
+    image_stats = {'nuclei' : {'Hue' : H_nuc, 'Saturation' : S_nuc, 'Value' : V_nuc},
+                    'cyto' : {'Hue' : H_cyto, 'Saturation' : S_cyto, 'Value' : V_cyto}}
 
     image_stats['nuclei']['H_median'] = numpy.median(H_nuc)
     image_stats['nuclei']['H_10th'] = numpy.percentile(H_nuc, 10)
@@ -156,6 +163,10 @@ def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     image_stats['nuclei']['S_10th'] = numpy.percentile(S_nuc, 10)
     image_stats['nuclei']['S_90th'] = numpy.percentile(S_nuc, 90)
 
+    image_stats['nuclei']['V_median'] = numpy.median(V_nuc)
+    image_stats['nuclei']['V_10th'] = numpy.percentile(V_nuc, 10)
+    image_stats['nuclei']['V_90th'] = numpy.percentile(V_nuc, 90)
+
     image_stats['cyto']['H_median'] = numpy.median(H_cyto)
     image_stats['cyto']['H_10th'] = numpy.percentile(H_cyto, 10)
     image_stats['cyto']['H_90th'] = numpy.percentile(H_cyto, 90)
@@ -163,6 +174,10 @@ def getHSstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     image_stats['cyto']['S_median'] = numpy.median(S_cyto)
     image_stats['cyto']['S_10th'] = numpy.percentile(S_cyto, 10)
     image_stats['cyto']['S_90th'] = numpy.percentile(S_cyto, 90)
+
+    image_stats['cyto']['V_median'] = numpy.median(V_cyto)
+    image_stats['cyto']['V_10th'] = numpy.percentile(V_cyto, 10)
+    image_stats['cyto']['V_90th'] = numpy.percentile(V_cyto, 90)
 
     return image_stats
 
