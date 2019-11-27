@@ -139,7 +139,10 @@ def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
 
     if color_change:
         """
-        TODO: fix but with hsv transfer of segmented images
+        TODO: fix but with hsv transfer of segmented images, 
+        turn entries in image stats into dicts, actually turn them into dataframes
+
+        and stop storing the actual values you dont need those!
         """
         nuclei = color.rgb2hsv(nuclei)
         cyto = color.rgb2hsv(cyto)
@@ -152,32 +155,32 @@ def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     S_cyto = sortImage(cyto[:,:,1], mask_val = sat_mask_value, greater_mode = True)
     V_cyto = sortImage(cyto[:,:,2], mask_val = val_mask_value, greater_mode = True)
 
-    image_stats = {'nuclei' : {'Hue' : H_nuc, 'Saturation' : S_nuc, 'Value' : V_nuc},
-                    'cyto' : {'Hue' : H_cyto, 'Saturation' : S_cyto, 'Value' : V_cyto}}
+    image_stats = {'nuclei' : {'Hue' : {}, 'Sat' : {}, 'Val' : {}},
+                    'cyto' : {'Hue' : {}, 'Sat' : {}, 'Val' : {}}}
 
-    image_stats['nuclei']['H_median'] = numpy.median(H_nuc)
-    image_stats['nuclei']['H_10th'] = numpy.percentile(H_nuc, 10)
-    image_stats['nuclei']['H_90th'] = numpy.percentile(H_nuc, 90)
+    image_stats['nuclei']['Hue']['median'] = numpy.median(H_nuc)
+    image_stats['nuclei']['Hue']['10'] = numpy.percentile(H_nuc, 10)
+    image_stats['nuclei']['Hue']['90'] = numpy.percentile(H_nuc, 90)
 
-    image_stats['nuclei']['S_median'] = numpy.median(S_nuc)
-    image_stats['nuclei']['S_10th'] = numpy.percentile(S_nuc, 10)
-    image_stats['nuclei']['S_90th'] = numpy.percentile(S_nuc, 90)
+    image_stats['nuclei']['Sat']['median'] = numpy.median(S_nuc)
+    image_stats['nuclei']['Sat']['10'] = numpy.percentile(S_nuc, 10)
+    image_stats['nuclei']['Sat']['90'] = numpy.percentile(S_nuc, 90)
 
-    image_stats['nuclei']['V_median'] = numpy.median(V_nuc)
-    image_stats['nuclei']['V_10th'] = numpy.percentile(V_nuc, 10)
-    image_stats['nuclei']['V_90th'] = numpy.percentile(V_nuc, 90)
+    image_stats['nuclei']['Val']['median'] = numpy.median(V_nuc)
+    image_stats['nuclei']['Val']['10'] = numpy.percentile(V_nuc, 10)
+    image_stats['nuclei']['Val']['90'] = numpy.percentile(V_nuc, 90)
 
-    image_stats['cyto']['H_median'] = numpy.median(H_cyto)
-    image_stats['cyto']['H_10th'] = numpy.percentile(H_cyto, 10)
-    image_stats['cyto']['H_90th'] = numpy.percentile(H_cyto, 90)
+    image_stats['cyto']['Hue']['median'] = numpy.median(H_cyto)
+    image_stats['cyto']['Hue']['10'] = numpy.percentile(H_cyto, 10)
+    image_stats['cyto']['Hue']['90'] = numpy.percentile(H_cyto, 90)
 
-    image_stats['cyto']['S_median'] = numpy.median(S_cyto)
-    image_stats['cyto']['S_10th'] = numpy.percentile(S_cyto, 10)
-    image_stats['cyto']['S_90th'] = numpy.percentile(S_cyto, 90)
+    image_stats['cyto']['Sat']['median'] = numpy.median(S_cyto)
+    image_stats['cyto']['Sat']['10'] = numpy.percentile(S_cyto, 10)
+    image_stats['cyto']['Sat']['90'] = numpy.percentile(S_cyto, 90)
 
-    image_stats['cyto']['V_median'] = numpy.median(V_cyto)
-    image_stats['cyto']['V_10th'] = numpy.percentile(V_cyto, 10)
-    image_stats['cyto']['V_90th'] = numpy.percentile(V_cyto, 90)
+    image_stats['cyto']['Val']['median'] = numpy.median(V_cyto)
+    image_stats['cyto']['Val']['10th'] = numpy.percentile(V_cyto, 10)
+    image_stats['cyto']['Val']['90'] = numpy.percentile(V_cyto, 90)
 
     return image_stats
 
