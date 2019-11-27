@@ -179,7 +179,7 @@ def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     image_stats['cyto']['Sat']['90'] = numpy.percentile(S_cyto, 90)
 
     image_stats['cyto']['Val']['median'] = numpy.median(V_cyto)
-    image_stats['cyto']['Val']['10th'] = numpy.percentile(V_cyto, 10)
+    image_stats['cyto']['Val']['10'] = numpy.percentile(V_cyto, 10)
     image_stats['cyto']['Val']['90'] = numpy.percentile(V_cyto, 90)
 
     return image_stats
