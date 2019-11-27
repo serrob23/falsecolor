@@ -34,7 +34,7 @@ import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as util
 import skimage.morphology as morph
-from skimage.color import rgb2hed
+from skimage.color import rgb2hed, rgb2hsv, hsv2rgb
 import cv2
 import numpy
 from numba import cuda, njit
@@ -679,6 +679,49 @@ def segmentNuclei(image, return3D = False):
 
         #return 2D array
         return binary_mask
+
+def maskEmpty(image_RGB, mask_val = 0.9, return3D = False):
+
+    """
+    Method to remove white areas from RGB histology image.
+
+    Parameters
+    ----------
+
+    image_RGB : 3D numpy array
+        RGB image in the form [X, Y, C]
+
+    mask_val : float:
+        Value over which pixels will be masked out of hsv image in value space
+    """
+
+    hsv = rgb2hsv(image_RGB)
+
+    binary_mask = (hsv[:,:,2] > mask_val).astype(int)
+
+    labeled_mask = morph.label(binary_mask)
+
+    labeled_mask = morph.remove_small_objects(labeled_mask)
+
+    labeled_mask = morph.remove_small_holes(labeled_mask)
+
+    empty_mask = (labeled_mask < 1).astype(int)
+
+    if return3D:
+        empty_mask_3D = numpy.ones(image_RGB.shape, dtype = int)
+
+        for i in range(empty_mask_3D.shape[-1]):
+            empty_mask_3D[:,:,i] *= empty_mask
+
+        return empty_mask_3D
+
+    else:
+
+        return empty_mask
+
+
+
+
 
 
 
