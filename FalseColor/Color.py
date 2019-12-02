@@ -593,6 +593,41 @@ def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy
     
     return RGB_image.astype(output_dtype)
 
+def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
+
+    x0 = numpy.floor(k/tileSize)
+    x1 = numpy.ceil(k/tileSize)
+    x = k/tileSize
+
+    #get background block
+    if k < int(M_nuc.shape[1]*tileSize-tileSize):
+        if k < int(tileSize/2):
+            C_nuc = M_nuc[:,0,:]
+            C_cyt = M_cyt[:,0,:]
+
+        elif x0==x1:
+            C_nuc = M_nuc[:,int(x1),:]
+            C_cyt = M_cyt[:,int(x1),:]
+        else:
+            nuc_norm0 = M_nuc[:,int(x0),:]
+            nuc_norm1 = M_nuc[:,int(x1),:]
+
+            cyto_norm0 = M_cyt[:,int(x0),:]
+            cyto_norm1 = M_cyt[:,int(x1),:]
+
+            C_nuc = nuc_norm0 + (x-x0)*(nuc_norm1 - nuc_norm0)/(x1-x0)
+            C_cyt = cyto_norm0 + (x-x0)*(cyto_norm1 - cyto_norm0)/(x1-x0)
+    else:
+        C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
+        C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
+
+    print('interpolating')
+    C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
+
+    C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
+
+    return C_nuc, C_cyt
+
 def deconvolveColors(image):
     """
     Separates H&E channels from an RGB image using skimage.color.rgb2hed method
