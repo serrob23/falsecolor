@@ -39,167 +39,7 @@ import cv2
 import numpy
 from numba import cuda, njit
 import math
-    
-def falseColor(imageSet, output_dtype=numpy.uint8):
-    """
-    False coloring based on:
-        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
 
-
-    Parameters
-    ----------
-    imageSet : 3D numpy array
-        dimmensions are [X,Y,C]
-        for use with process images in FCdataobject
-
-    output_dtype : numpy.uint8
-        output datatype for final RGB image
-
-
-    Returns
-    -------
-    RGB_image : numpy array
-        Combined false colored image in the standard RGB format [X, Y, C]
-
-    """
-    beta_dict = {
-                #constants for nuclear channel
-                'K_nuclei' : 0.08,
-
-                #constants for cytoplasmic channel
-                'K_cyto' : 0.0120}
-
-    #returns dictionary with settings for each channel
-    #keys are: nuclei, cyto
-    #entries are lists in order of RGB constants
-    settings = getDefaultRGBSettings()
-
-    nuclei = imageSet[:,:,0].astype(float)
-    constants_nuclei = settings['nuclei']
-    k_nuclei = beta_dict['K_nuclei']
-
-    cyto = imageSet[:,:,1].astype(float)
-    constants_cyto = settings['cyto']
-    k_cytoplasm= beta_dict['K_cyto']
-    
-    #execute background subtraction
-    nuc_threshold = getBackgroundLevels(nuclei)[1]
-    nuclei = preProcess(nuclei, threshold = nuc_threshold)
-    
-    cyto_threshold = getBackgroundLevels(cyto)[1]
-    cyto = preProcess(cyto, threshold = cyto_threshold)
-
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
-
-    #iterate throough RGB constants and execute image multiplication
-    for i in range(len(RGB_image)):
-        RGB_image[i] = 255*numpy.multiply(numpy.exp(-constants_cyto[i]*k_cytoplasm*cyto),
-                                        numpy.exp(-constants_nuclei[i]*k_nuclei*nuclei))
-
-    #reshape to [X,Y,C]
-    RGB_image = numpy.moveaxis(RGB_image,0,-1)
-
-    #rescale to 8bit range
-    return RGB_image.astype(output_dtype)
-
-def getDefaultRGBSettings():
-
-    """returns empirically determined constants for nuclear/cyto channels
-
-    Parameters
-    ----------
-
-
-    Returns
-    -------
-    settings_dict : dict
-        Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
-        derived RGB constants for false coloring.
-
-    Note: these settings currently only optimized for flat field method in
-    rapidFalseColor
-    """
-    k_cyto = 1.0
-    k_nuclei = 0.85
-    nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
-    cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
-
-    settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
-    return settings_dict
-
-def preProcess(image, threshold = 50):
-    """
-    Method used for background subtracting data with a fixed value
-
-    Parameters
-    ----------
-
-    image : 2D numpy array
-        image for processing
-
-    threshold : int
-        background level to subtract
-
-    Returns
-    -------
-
-    processed_image : 2D numpy array
-        Background subtracted image. 
-    """
-
-    #background subtraction
-    image -= threshold
-
-    #no negative values
-    image[image < 0] = 0
-
-    #calculate normalization factor
-    image = numpy.power(image,0.85)
-    image_mean = numpy.mean(image[image>threshold])*8
-
-    #convert into 8bit range
-    processed_image = image*(65535/image_mean)*(255/65535)
-
-    return processed_image
-
-@cuda.jit #direct GPU compiling
-def rapid_preProcess(image,background,norm_factor,output):
-    """
-    Background subtraction optimized for GPU, used by rapidFalseColor
-
-    Parameters
-    ----------
-
-    image : 2d numpy array, dtype = int16
-        image for background subtraction
-
-    background : int
-        constant for subtraction
-
-    norm_factor : int
-        empirically determaned constant for normalization after subtraction
-
-    output : 2d numpy array
-        numpy array of zeros for gpu to assign values to
-    """
-
-    #create iterator for gpu  
-    row,col = cuda.grid(2)
-
-    #cycle through image shape and assign values
-    if row < output.shape[0] and col < output.shape[1]:
-
-        #subtract background and raise to factor
-        tmp = image[row,col] - background
-
-        #remove negative values
-        if tmp < 0:
-            output[row,col] = 0
-
-        #normalize to 8bit range
-        else:
-            tmp = (tmp**0.85)*(65535/norm_factor)*(255/65535)
-            output[row,col] = tmp
 
 @cuda.jit #direct GPU compiling
 def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
@@ -238,6 +78,7 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
     if row < output.shape[0] and col < output.shape[1]:
         tmp = nuclei[row,col]*nuc_settings*k_nuclei + cyto[row,col]*cyto_settings*k_cyto
         output[row,col] = 255*math.exp(-1*tmp)
+
 
 @cuda.jit
 def rapidFieldDivision(image,flat_field,output):
@@ -380,6 +221,47 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
     return RGB_image.astype(numpy.uint8)
 
+
+@cuda.jit #direct GPU compiling
+def rapid_preProcess(image,background,norm_factor,output):
+    """
+    Background subtraction optimized for GPU, used by rapidFalseColor
+
+    Parameters
+    ----------
+
+    image : 2d numpy array, dtype = int16
+        image for background subtraction
+
+    background : int
+        constant for subtraction
+
+    norm_factor : int
+        empirically determaned constant for normalization after subtraction
+
+    output : 2d numpy array
+        numpy array of zeros for gpu to assign values to
+    """
+
+    #create iterator for gpu  
+    row,col = cuda.grid(2)
+
+    #cycle through image shape and assign values
+    if row < output.shape[0] and col < output.shape[1]:
+
+        #subtract background and raise to factor
+        tmp = image[row,col] - background
+
+        #remove negative values
+        if tmp < 0:
+            output[row,col] = 0
+
+        #normalize to 8bit range
+        else:
+            tmp = (tmp**0.85)*(65535/norm_factor)*(255/65535)
+            output[row,col] = tmp
+
+
 @cuda.jit
 def Convolve2d(image,kernel,output):
     """
@@ -424,6 +306,7 @@ def Convolve2d(image,kernel,output):
                     
     output[row,col] = tmp 
 
+
 def sharpenImage(input_image,alpha = 0.5):
     """
     Image sharpening algorithm to amplify edges.
@@ -462,6 +345,137 @@ def sharpenImage(input_image,alpha = 0.5):
     
     return final_image
 
+
+def getDefaultRGBSettings():
+
+    """returns empirically determined constants for nuclear/cyto channels
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+    settings_dict : dict
+        Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
+        derived RGB constants for false coloring.
+
+    Note: these settings currently only optimized for flat field method in
+    rapidFalseColor
+    """
+    k_cyto = 1.0
+    k_nuclei = 0.85
+    nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
+    cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
+
+    settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+    return settings_dict
+
+
+def falseColor(imageSet, output_dtype=numpy.uint8):
+    """
+    False coloring using Beer's law method based on:
+    Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
+
+
+    Parameters
+    ----------
+    imageSet : 3D numpy array
+        dimmensions are [X,Y,C]
+        for use with process images in FCdataobject
+
+    channelIDs = list
+        keys to grab settings from beta_dict
+        defaults: s00 : nuclei
+                  s01 : cyto
+
+    output_dtype : numpy.uint8
+        output datatype for final RGB image
+
+
+    Returns
+    -------
+    RGB_image : numpy array
+        Combined false colored image in the standard RGB format [X, Y, C]
+
+    """
+    beta_dict = {
+                #constants for nuclear channel
+                'K_nuclei' : 0.08,
+
+                #constants for cytoplasmic channel
+                'K_cyto' : 0.0120}
+
+    #returns dictionary with settings for each channel
+    #keys are: nuclei, cyto
+    #entries are lists in order of RGB constants
+    settings = getDefaultRGBSettings()
+
+    nuclei = imageSet[:,:,0].astype(float)
+    constants_nuclei = settings['nuclei']
+    k_nuclei = beta_dict['K_nuclei']
+
+    cyto = imageSet[:,:,1].astype(float)
+    constants_cyto = settings['cyto']
+    k_cytoplasm= beta_dict['K_cyto']
+    
+    #execute background subtraction
+    nuc_threshold = getBackgroundLevels(nuclei)[1]
+    nuclei = preProcess(nuclei, threshold = nuc_threshold)
+    
+    cyto_threshold = getBackgroundLevels(cyto)[1]
+    cyto = preProcess(cyto, threshold = cyto_threshold)
+
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
+
+    #iterate throough RGB constants and execute image multiplication
+    for i in range(len(RGB_image)):
+        RGB_image[i] = 255*numpy.multiply(numpy.exp(-constants_cyto[i]*k_cytoplasm*cyto),
+                                        numpy.exp(-constants_nuclei[i]*k_nuclei*nuclei))
+
+    #reshape to [X,Y,C]
+    RGB_image = numpy.moveaxis(RGB_image,0,-1)
+
+    #rescale to 8bit range
+    return RGB_image.astype(output_dtype)
+
+
+def preProcess(image, threshold = 50):
+    """
+    Method used for background subtracting data with a fixed value
+
+    Parameters
+    ----------
+
+    image : 2D numpy array
+        image for processing
+
+    threshold : int
+        background level to subtract
+
+    Returns
+    -------
+
+    processed_image : 2D numpy array
+        Background subtracted image. 
+    """
+
+    #background subtraction
+    image -= threshold
+
+    #no negative values
+    image[image < 0] = 0
+
+    #calculate normalization factor
+    image = numpy.power(image,0.85)
+    image_mean = numpy.mean(image[image>threshold])*8
+
+    #convert into 8bit range
+    processed_image = image*(65535/image_mean)*(255/65535)
+
+    return processed_image
+
+
 def getBackgroundLevels(image, threshold = 50):
     """
     Calculate foreground and background values based on image statistics, background is currently
@@ -495,6 +509,7 @@ def getBackgroundLevels(image, threshold = 50):
 
     return hi_val,background
 
+
 def getFlatField(image,tileSize=256,blockSize = 16):
 
     """
@@ -508,6 +523,15 @@ def getFlatField(image,tileSize=256,blockSize = 16):
     tileSize : int
 
     blockSize : int
+
+    Returns
+    -------
+
+    flat_field : 2D numpy array
+        Calculated flat field for input image
+
+    background : float
+        Background level for input image
     """
 
     midrange,background = getBackgroundLevels(image)
@@ -537,47 +561,37 @@ def getFlatField(image,tileSize=256,blockSize = 16):
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
     return flat_field, background/5
 
-def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
-    """depreciated
-    single channel false coloring based on:
-        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
-    """
-    
-    beta_dict = {
-                #nuclear consants
-                's00' : {'K' : 0.017,
-                             'R' : 0.544,
-                             'G' : 1.000,
-                             'B' : 0.050,
-                             'thresh' : 50},
-                             
-                #cytoplasmic constants               
-                's01' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
-                              'B' : 0.860,
-                              'thresh' : 500}}
-                
-    constants = beta_dict[channelID]
-    
-    RGB_image = numpy.zeros((input_image.shape[0],input_image.shape[1],3))
-    
-    #execute background subtraction
-    input_image = preProcess(input_image,channelID)
-    
-    #assign RGB values
-    R = numpy.exp(-constants['K']*constants['R']*input_image)
-    G = numpy.exp(-constants['K']*constants['G']*input_image)
-    B = numpy.exp(-constants['K']*constants['B']*input_image)
-    
-    #rescale to 8bit range
-    RGB_image[:,:,0] = R*255
-    RGB_image[:,:,1] = G*255
-    RGB_image[:,:,2] = B*255
-    
-    return RGB_image.astype(output_dtype)
 
 def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
+    """
+    Method for resizing downsampled data to be the same size as full res data. Used for 
+    interpolating flat field images.
+
+    Parameters
+    ----------
+
+    M_nuc : 2D numpy array
+        Downsampled data from BigStitcher 
+
+    M_cyt : 2D numpy array
+        Downsampled data from BigStitcher
+
+    k : int
+        Index for image location in full res HDF5 file
+
+    tileSize : int
+        Default = 256, block size for interpolation
+
+    Returns
+    -------
+
+    C_nuc : 2D numpy array
+        Rescaled downsampled data
+
+    C_cyt : 2D numpy array
+        Rescaled downsampled data
+
+    """
 
     x0 = numpy.floor(k/tileSize)
     x1 = numpy.ceil(k/tileSize)
@@ -611,6 +625,7 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
     C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
 
     return C_nuc, C_cyt
+
 
 def deconvolveColors(image):
     """
@@ -699,6 +714,7 @@ def segmentNuclei(image, return3D = False):
         #return 2D array
         return binary_mask
 
+
 def maskEmpty(image_RGB, mask_val = 0.9, return3D = False):
 
     """
@@ -739,10 +755,45 @@ def maskEmpty(image_RGB, mask_val = 0.9, return3D = False):
         return empty_mask
 
 
-
-
-
-
+def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
+    """depreciated
+    single channel false coloring based on:
+        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
+    """
+    
+    beta_dict = {
+                #nuclear consants
+                's00' : {'K' : 0.017,
+                             'R' : 0.544,
+                             'G' : 1.000,
+                             'B' : 0.050,
+                             'thresh' : 50},
+                             
+                #cytoplasmic constants               
+                's01' : {'K' : 0.008,
+                              'R' : 0.300,
+                              'G' : 1.000,
+                              'B' : 0.860,
+                              'thresh' : 500}}
+                
+    constants = beta_dict[channelID]
+    
+    RGB_image = numpy.zeros((input_image.shape[0],input_image.shape[1],3))
+    
+    #execute background subtraction
+    input_image = preProcess(input_image,channelID)
+    
+    #assign RGB values
+    R = numpy.exp(-constants['K']*constants['R']*input_image)
+    G = numpy.exp(-constants['K']*constants['G']*input_image)
+    B = numpy.exp(-constants['K']*constants['B']*input_image)
+    
+    #rescale to 8bit range
+    RGB_image[:,:,0] = R*255
+    RGB_image[:,:,1] = G*255
+    RGB_image[:,:,2] = B*255
+    
+    return RGB_image.astype(output_dtype)
 
 
 def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
