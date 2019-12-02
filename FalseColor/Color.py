@@ -2,7 +2,11 @@
 #===============================================================================
 # 
 #  License: GPL
-# 
+#
+#
+#  Copyright (c) 2019 Rob Serafin, Liu Lab, 
+#  The University of Washington Department of Mechanical Engineering  
+#
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License 2
 #  as published by the Free Software Foundation.
@@ -19,7 +23,7 @@
 #===============================================================================
 
 Rob Serafin
-11/4/2019
+11/20/2019
 
 """
 
@@ -29,10 +33,11 @@ import scipy.ndimage as nd
 import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as util
+import skimage.morphology as morph
+from skimage.color import rgb2hed, rgb2hsv, hsv2rgb
 import cv2
 import numpy
-import h5py as hp
-from numba import cuda
+from numba import cuda, njit
 import math
     
 def falseColor(imageSet, channelIDs=['s00','s01'], 
@@ -41,6 +46,9 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     False coloring based on:
         Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
 
+
+    Parameters
+    ----------
     imageSet : 3D numpy array
         dimmensions are [X,Y,C]
         for use with process images in FCdataobject
@@ -52,6 +60,12 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
 
     output_dtype : numpy.uint8
         output datatype for final RGB image
+
+
+    Returns
+    -------
+    RGB_image : numpy array
+        Combined false colored image in the standard RGB format [X, Y, C]
 
     """
     beta_dict = {
@@ -95,17 +109,21 @@ def falseColor(imageSet, channelIDs=['s00','s01'],
     return RGB_image.astype(output_dtype)
 
 def getDefaultRGBSettings():
+
     """returns empirically determined constants for nuclear/cyto channels
+
+    Parameters
+    ----------
+
+
+    Returns
+    -------
+    settings_dict : dict
+        Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
+        derived RGB constants for false coloring.
 
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
-    beta2 = 0.05;
-    beta4 = 1.00;
-    beta6 = 0.544;
-
-    beta1 = 0.65;
-    beta3 = 0.85;
-    beta5 = 0.35;
     """
     k_cyto = 1.0
     k_nuclei = 0.85
@@ -119,11 +137,20 @@ def preProcess(image, threshold = 50):
     """
     Method used for background subtracting data with a fixed value
 
-    image : 2d numpy array
+    Parameters
+    ----------
+
+    image : 2D numpy array
         image for processing
 
     threshold : int
         background level to subtract
+
+    Returns
+    -------
+
+    processed_image : 2D numpy array
+        Background subtracted image. 
     """
 
     #background subtraction
@@ -143,7 +170,11 @@ def preProcess(image, threshold = 50):
 
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
-    """Background subtraction optimized for GPU
+    """
+    Background subtraction optimized for GPU, used by rapidFalseColor
+
+    Parameters
+    ----------
 
     image : 2d numpy array, dtype = int16
         image for background subtraction
@@ -181,6 +212,10 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
                         cyto_settings, k_nuclei, k_cyto):
     #TODO: implement array base normalization
     """
+    GPU based exponential false coloring operation. Used by rapidFalseColor()
+
+    Parameters
+    ----------
     nuclei : 2D numpy array 
         dtype = float
         Nuclear channel image, already pre processed
@@ -213,7 +248,10 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
 @cuda.jit
 def rapidFieldDivision(image,flat_field,output):
     """
-    Used for rapidFalseColoring when flat field has been calculated
+    Used for rapidFalseColoring() when flat field has been calculated
+
+    Parameters
+    ----------
 
     image : numpy array written to GPU
 
@@ -234,6 +272,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    nuc_background = 50, cyto_background = 50,
                    run_normalization = False):
     """
+    Parameters
+    ----------
     nuclei : numpy array
         Nuclear channel image
         
@@ -263,6 +303,12 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads)
         used for GPU threads
+
+    Returns
+    -------
+    RGB_image : 3D numpy array
+        Combined false colored image in the standard RGB format [X, Y, C]
+
     """
 
     #ensure float dtype
@@ -343,6 +389,10 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 @cuda.jit
 def Convolve2d(image,kernel,output):
     """
+    GPU based 2d convolution method
+
+    Parameters
+    ----------
     GPU accelerated 2D convolution 
 
     image : 2D numpy array
@@ -384,11 +434,20 @@ def sharpenImage(input_image,alpha = 0.5):
     """
     Image sharpening algorithm to amplify edges.
 
+    Parameters
+    ----------
+
     input_image : 2D numpy array
         Image to run sharpening algorithm on
 
     alpha : float or int
         Multiplicative constant for final result.
+
+    Returns
+    --------
+
+    final_image : 2D numpy array
+        The sum of the input image and the resulting convolutions
     """
     #create kernels to amplify edges
     hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
@@ -410,6 +469,27 @@ def sharpenImage(input_image,alpha = 0.5):
     return final_image
 
 def getBackgroundLevels(image, threshold = 50):
+    """
+    Calculate foreground and background values based on image statistics, background is currently
+    set to be 20% of foreground
+
+    Parameters
+    ----------
+
+    image : 2D numpy array
+
+    threshold : int
+        threshold above which is counted as foreground
+
+    Returns
+    -------
+
+    hi_val : int
+        Foreground values
+
+    background : int
+        Background value
+    """
 
     image_DS = numpy.sort(image,axis=None)
 
@@ -421,19 +501,31 @@ def getBackgroundLevels(image, threshold = 50):
 
     return hi_val,background
 
-def getFlatField(image,tileSize=256,block_size = 16):
-    #returns downsample flat field of image data and calculated background levels
+def getFlatField(image,tileSize=256,blockSize = 16):
+
+    """
+    Returns downsampled flat field of image data and calculated background levels
+
+    Parameters
+    ----------
+
+    image : 2D or 3D numpy array
+
+    tileSize : int
+
+    blockSize : int
+    """
 
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(numpy.floor(image.shape[0]/block_size)*block_size)
-    cols_max = int(numpy.floor(image.shape[2]/block_size)*block_size)
-    stacks_max = int(numpy.floor(image.shape[1]/block_size)*block_size)
+    rows_max = int(numpy.floor(image.shape[0]/blockSize)*blockSize)
+    cols_max = int(numpy.floor(image.shape[2]/blockSize)*blockSize)
+    stacks_max = int(numpy.floor(image.shape[1]/blockSize)*blockSize)
 
 
-    rows = numpy.arange(0, rows_max+int(tileSize/block_size), int(tileSize/block_size))
-    cols = numpy.arange(0, cols_max+int(tileSize/block_size), int(tileSize/block_size))
-    stacks = numpy.arange(0, stacks_max+int(tileSize/block_size), int(tileSize/block_size))
+    rows = numpy.arange(0, rows_max+int(tileSize/blockSize), int(tileSize/blockSize))
+    cols = numpy.arange(0, cols_max+int(tileSize/blockSize), int(tileSize/blockSize))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), int(tileSize/blockSize))
     
     flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
     
@@ -490,6 +582,174 @@ def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy
     RGB_image[:,:,2] = B*255
     
     return RGB_image.astype(output_dtype)
+
+def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
+
+    x0 = numpy.floor(k/tileSize)
+    x1 = numpy.ceil(k/tileSize)
+    x = k/tileSize
+
+    #get background block
+    if k < int(M_nuc.shape[1]*tileSize-tileSize):
+        if k < int(tileSize/2):
+            C_nuc = M_nuc[:,0,:]
+            C_cyt = M_cyt[:,0,:]
+
+        elif x0==x1:
+            C_nuc = M_nuc[:,int(x1),:]
+            C_cyt = M_cyt[:,int(x1),:]
+        else:
+            nuc_norm0 = M_nuc[:,int(x0),:]
+            nuc_norm1 = M_nuc[:,int(x1),:]
+
+            cyto_norm0 = M_cyt[:,int(x0),:]
+            cyto_norm1 = M_cyt[:,int(x1),:]
+
+            C_nuc = nuc_norm0 + (x-x0)*(nuc_norm1 - nuc_norm0)/(x1-x0)
+            C_cyt = cyto_norm0 + (x-x0)*(cyto_norm1 - cyto_norm0)/(x1-x0)
+    else:
+        C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
+        C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
+
+    print('interpolating')
+    C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
+
+    C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
+
+    return C_nuc, C_cyt
+
+def deconvolveColors(image):
+    """
+    Separates H&E channels from an RGB image using skimage.color.rgb2hed method
+
+    Parameters
+    ----------
+
+    image : 3D numpy array
+        RGB image in the format [X, Y, C] where the hematoxylin and eosin channels 
+        are to be separted.
+
+    Returns
+    -------
+
+    hematoxylin : 2D numpy array
+        nuclear channel deconvolved from RGB image
+
+
+    eosin : 2D numpy array
+        cytoplasm channel deconvolved from RGB image
+
+    """
+
+    separated_image = rgb2hed(image)
+
+    hematoxylin = separated_image[:,:,0]
+
+    eosin = separated_image[:,:,1]
+
+    return hematoxylin, eosin
+
+
+def segmentNuclei(image, return3D = False):
+    """
+    
+    Grabs binary mask of nuclei from H&E image using color deconvolution. 
+
+    Parameters
+    ----------
+
+    image : 3D numpy array 
+        H&E stained RGB image in the form [X, Y, C]
+
+    return3D : bool, default = False
+        Return 3D version of mask
+
+    Returns
+    -------
+
+    binary_mask : 2D or 3D numpy array
+        Binary mask of segmented nuclei
+
+    """
+
+    #separate channels
+    nuclei, cyto = deconvolveColors(image)
+
+    #median filter nuclei for optimized otsu threshold
+    median_filtered_nuclei = filt.median(nuclei)
+
+    #calculate threshold and create initial binary mask
+    threshold = filt.threshold_otsu(median_filtered_nuclei)
+    binarized_nuclei = (median_filtered_nuclei > threshold).astype(int)
+
+    #remove small objects
+    labeled_mask = morph.label(binarized_nuclei)
+    shape_filtered_mask = morph.remove_small_objects(labeled_mask)
+
+    #create final mask and return object
+    if return3D:
+
+        binary_mask = numpy.ones(image.shape, dtype = int)
+
+        for i in range(binary_mask.shape[-1]):
+
+            binary_mask[:,:,i] *= (shape_filtered_mask > 0).astype(int)
+
+        #return 3D array
+        return binary_mask
+
+    else:
+
+        binary_mask = (shape_filtered_mask > 0).astype(int)
+
+        #return 2D array
+        return binary_mask
+
+def maskEmpty(image_RGB, mask_val = 0.9, return3D = False):
+
+    """
+    Method to remove white areas from RGB histology image.
+
+    Parameters
+    ----------
+
+    image_RGB : 3D numpy array
+        RGB image in the form [X, Y, C]
+
+    mask_val : float:
+        Value over which pixels will be masked out of hsv image in value space
+    """
+
+    hsv = rgb2hsv(image_RGB)
+
+    binary_mask = (hsv[:,:,2] > mask_val).astype(int)
+
+    labeled_mask = morph.label(binary_mask)
+
+    labeled_mask = morph.remove_small_objects(labeled_mask)
+
+    labeled_mask = morph.remove_small_holes(labeled_mask)
+
+    empty_mask = (labeled_mask < 1).astype(int)
+
+    if return3D:
+        empty_mask_3D = numpy.ones(image_RGB.shape, dtype = int)
+
+        for i in range(empty_mask_3D.shape[-1]):
+            empty_mask_3D[:,:,i] *= empty_mask
+
+        return empty_mask_3D
+
+    else:
+
+        return empty_mask
+
+
+
+
+
+
+
 
 def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
     """depreciated

@@ -2,7 +2,11 @@
 #===============================================================================
 # 
 #  License: GPL
-# 
+#
+#
+#  Copyright (c) 2019 Rob Serafin, Liu Lab, 
+#  The University of Washington Department of Mechanical Engineering  
+#
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License 2
 #  as published by the Free Software Foundation.
@@ -19,13 +23,15 @@
 #===============================================================================
 
 Rob Serafin
-11/4/2019
+11/20/2019
+
 """
 import os
 import tifffile as tif
 import numpy
 from skimage import io
 import time
+from FalseColor import Process
 
 
 def saveProcess(queue):
@@ -46,6 +52,9 @@ def saveProcess(queue):
 
                 data : numpy array
                     image to save
+
+                do_stats : bool, False
+                    whether to save RGB statistics, defaults to False
 
                 token : None or str
                     token will be a str when thread stop is called
