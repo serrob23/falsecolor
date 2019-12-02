@@ -66,7 +66,8 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 ## License 
 GNU Affero General Public License v3.0
 
-Copyright (c) [2019] [Robert Serafin]
+Copyright (c) 2019 Rob Serafin, Liu Lab, 
+The University of Washington Department of Mechanical Engineering 
  
   License: GPL
  
