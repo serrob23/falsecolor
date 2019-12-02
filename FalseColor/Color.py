@@ -124,13 +124,6 @@ def getDefaultRGBSettings():
 
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
-    beta2 = 0.05;
-    beta4 = 1.00;
-    beta6 = 0.544;
-
-    beta1 = 0.65;
-    beta3 = 0.85;
-    beta5 = 0.35;
     """
     k_cyto = 1.0
     k_nuclei = 0.85
@@ -279,8 +272,6 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    nuc_background = 50, cyto_background = 50,
                    run_normalization = False):
     """
-
-
     Parameters
     ----------
     nuclei : numpy array
@@ -315,7 +306,6 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     Returns
     -------
-
     RGB_image : 3D numpy array
         Combined false colored image in the standard RGB format [X, Y, C]
 

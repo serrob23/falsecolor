@@ -69,6 +69,9 @@ def main():
     start_k = args.start_k
     stop_k = args.stop_k
 
+    #sharpening coefficient
+    alpha = args.alpha
+
     if stop_k != 0:
         stop_k += start_k
 
@@ -128,8 +131,8 @@ def main():
 
             # sharpen images
             print('sharpening')
-            nuclei = fc.sharpenImage(nuclei)
-            cyto = fc.sharpenImage(cyto)
+            nuclei = fc.sharpenImage(nuclei, alpha = alpha)
+            cyto = fc.sharpenImage(cyto, alpha = alpha)
 
             #interpolate downsampled images to full res size to use as flat fielding mask
             C_nuc, C_cyt = fc.interpolateDS(M_nuc, M_cyt, k)
