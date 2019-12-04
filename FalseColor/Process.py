@@ -184,7 +184,7 @@ def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
 
     return image_stats
 
-def saveImageStats(image_stats,folder,filename, RGB = True):
+def saveImageStats(image_stats,folder,filename):
     """
     Parameters
     ----------
@@ -205,8 +205,7 @@ def saveImageStats(image_stats,folder,filename, RGB = True):
 
     savepath = os.path.join(folder,filename)
 
-    if RGB:
-        numpy.savez(savepath, R = image_stats['R'], G = image_stats['G'], B = image_stats['B'])
-
-    else:
-        numpy.savez(savepath, nuclei = image_stats['nuclei'], cyto = image_stats['cyto'])
+    with open(savepath, 'w') as f:
+        json.dump(image_stats,f)
+    f.close()
+    
