@@ -659,7 +659,7 @@ def deconvolveColors(image):
     return hematoxylin, eosin
 
 
-def segmentNuclei(image, return3D = False):
+def segmentNuclei(image, return3D = True, opening = False, radius = 3):
     """
     
     Grabs binary mask of nuclei from H&E image using color deconvolution. 
@@ -694,6 +694,9 @@ def segmentNuclei(image, return3D = False):
     #remove small objects
     labeled_mask = morph.label(binarized_nuclei)
     shape_filtered_mask = morph.remove_small_objects(labeled_mask)
+
+    if opening:
+        shape_filtered_mask = morph.binary_opening(shape_filtered_mask, morph.disk(radius))
 
     #create final mask and return object
     if return3D:
