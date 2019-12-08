@@ -718,7 +718,7 @@ def segmentNuclei(image, return3D = True, opening = False, radius = 3):
         return binary_mask
 
 
-def maskEmpty(image_RGB, mask_val = 0.9, return3D = False, min_size = 150):
+def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
 
     """
     Method to remove white areas from RGB histology image.
@@ -735,7 +735,7 @@ def maskEmpty(image_RGB, mask_val = 0.9, return3D = False, min_size = 150):
 
     hsv = rgb2hsv(image_RGB)
 
-    binary_mask = (hsv[:,:,2] > mask_val).astype(int)
+    binary_mask = (hsv[:,:,1] > mask_val).astype(int)
 
     labeled_mask = morph.label(binary_mask)
 
