@@ -40,13 +40,30 @@ import time
 def main():
 
     parser = argparse.ArgumentParser()
+
+    #directory containing data to false color
     parser.add_argument("filepath", help='imaris file')
+
+    #h5 data file
     parser.add_argument("filename", help='imaris file')
-    parser.add_argument("alpha", type = float, help='imaris file')
+
+    #folder to save results
     parser.add_argument("savefolder",help='imaris file')
+
+    #saved result format
     parser.add_argument("format",type=str,help='imagris file')
+
+    #index to start/stop processing, skip_k is the stepsize interval defaults to 1
     parser.add_argument("start_k",type = int,help = 'imagris file')
     parser.add_argument("stop_k",type = int,help='imagris file')
+    parser.add_argument("skip_k", type = int, nargs = '?', const = 1)
+
+    #constants for coloring normalization and sharpening, defaults shown below
+    parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', const = 1.5)
+    parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', const = 3.72)
+    parser.add_argument("alpha", type = float, nargs = '?', const = 0.5, help = 'imaris file')
+
+    #get arguments
     args = parser.parse_args()
 
     #get path info
@@ -55,7 +72,7 @@ def main():
     save_dir = args.savefolder
 
     #load data
-    datapath = filepath + os.sep + filename
+    datapath = os.path.join(filepath, filename)
 
     f = h5.File(datapath,'r')
 
@@ -67,9 +84,14 @@ def main():
     #will be false colored.
     start_k = args.start_k
     stop_k = args.stop_k
+    skip_k = args.skip_k
 
     #sharpening coefficient
     alpha = args.alpha
+
+    #normalization coefficients
+    nuc_norm_constant = args.Nuclei_Normfactor
+    cyto_norm_constant = args.Cyto_Normfactor
 
     if stop_k != 0:
         stop_k += start_k
@@ -77,7 +99,7 @@ def main():
     elif stop_k == 0:
         stop_k = nuclei_ds.shape[1]*16
 
-    print(start_k,stop_k)
+    print('Reading data from index:' start_k,'to ' ,stop_k, 'at stepsize = ', skip_k)
 
     #calculate flat field
     M_nuc,bkg_nuc = fc.getFlatField(nuclei_ds)
@@ -102,7 +124,7 @@ def main():
     print(cyto_RGBsettings)
 
 
-    for k in range(start_k,stop_k):
+    for k in range(start_k, stop_k, skip_k):
         if k == stop_k:
             break
         else:
