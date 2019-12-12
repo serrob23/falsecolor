@@ -335,6 +335,7 @@ def sharpenImage(input_image,alpha = 0.5):
     grid = (input_image.shape[0]//blocks[0] + 1, input_image.shape[1]//blocks[1] + 1)
 
     #run convolution
+    input_image = numpy.ascontiguousarray(input_image)
     voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
     houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
     Convolve2d[grid,blocks](input_image,vkernel,voutput)
@@ -659,7 +660,7 @@ def deconvolveColors(image):
     return hematoxylin, eosin
 
 
-def segmentNuclei(image, return3D = False):
+def segmentNuclei(image, return3D = True, opening = False, radius = 3, min_size = 64):
     """
     
     Grabs binary mask of nuclei from H&E image using color deconvolution. 
@@ -693,7 +694,10 @@ def segmentNuclei(image, return3D = False):
 
     #remove small objects
     labeled_mask = morph.label(binarized_nuclei)
-    shape_filtered_mask = morph.remove_small_objects(labeled_mask)
+    shape_filtered_mask = morph.remove_small_objects(labeled_mask, min_size = min_size)
+
+    if opening:
+        shape_filtered_mask = morph.binary_opening(shape_filtered_mask, morph.disk(radius))
 
     #create final mask and return object
     if return3D:
@@ -715,7 +719,7 @@ def segmentNuclei(image, return3D = False):
         return binary_mask
 
 
-def maskEmpty(image_RGB, mask_val = 0.9, return3D = False):
+def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
 
     """
     Method to remove white areas from RGB histology image.
@@ -732,11 +736,11 @@ def maskEmpty(image_RGB, mask_val = 0.9, return3D = False):
 
     hsv = rgb2hsv(image_RGB)
 
-    binary_mask = (hsv[:,:,2] > mask_val).astype(int)
+    binary_mask = (hsv[:,:,1] < mask_val).astype(int)
 
     labeled_mask = morph.label(binary_mask)
 
-    labeled_mask = morph.remove_small_objects(labeled_mask)
+    labeled_mask = morph.remove_small_objects(labeled_mask, min_size =  min_size)
 
     labeled_mask = morph.remove_small_holes(labeled_mask)
 

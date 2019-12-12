@@ -161,30 +161,36 @@ def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0,
     image_stats['nuclei']['Hue']['median'] = numpy.median(H_nuc)
     image_stats['nuclei']['Hue']['10'] = numpy.percentile(H_nuc, 10)
     image_stats['nuclei']['Hue']['90'] = numpy.percentile(H_nuc, 90)
+    image_stats['nuclei']['Hue']['std'] = numpy.std(H_nuc)
 
     image_stats['nuclei']['Sat']['median'] = numpy.median(S_nuc)
     image_stats['nuclei']['Sat']['10'] = numpy.percentile(S_nuc, 10)
     image_stats['nuclei']['Sat']['90'] = numpy.percentile(S_nuc, 90)
+    image_stats['nuclei']['Sat']['std'] = numpy.std(S_nuc)
 
     image_stats['nuclei']['Val']['median'] = numpy.median(V_nuc)
     image_stats['nuclei']['Val']['10'] = numpy.percentile(V_nuc, 10)
     image_stats['nuclei']['Val']['90'] = numpy.percentile(V_nuc, 90)
+    image_stats['nuclei']['Val']['std'] = numpy.std(V_nuc)
 
     image_stats['cyto']['Hue']['median'] = numpy.median(H_cyto)
     image_stats['cyto']['Hue']['10'] = numpy.percentile(H_cyto, 10)
     image_stats['cyto']['Hue']['90'] = numpy.percentile(H_cyto, 90)
+    image_stats['cyto']['Hue']['std'] = numpy.std(H_cyto)
 
     image_stats['cyto']['Sat']['median'] = numpy.median(S_cyto)
     image_stats['cyto']['Sat']['10'] = numpy.percentile(S_cyto, 10)
     image_stats['cyto']['Sat']['90'] = numpy.percentile(S_cyto, 90)
+    image_stats['cyto']['Sat']['std'] = numpy.std(S_cyto)
 
     image_stats['cyto']['Val']['median'] = numpy.median(V_cyto)
     image_stats['cyto']['Val']['10'] = numpy.percentile(V_cyto, 10)
     image_stats['cyto']['Val']['90'] = numpy.percentile(V_cyto, 90)
+    image_stats['cyto']['Val']['std'] = numpy.std(V_cyto)
 
     return image_stats
 
-def saveImageStats(image_stats,folder,filename, RGB = True):
+def saveImageStats(image_stats,folder,filename):
     """
     Parameters
     ----------
@@ -205,8 +211,7 @@ def saveImageStats(image_stats,folder,filename, RGB = True):
 
     savepath = os.path.join(folder,filename)
 
-    if RGB:
-        numpy.savez(savepath, R = image_stats['R'], G = image_stats['G'], B = image_stats['B'])
-
-    else:
-        numpy.savez(savepath, nuclei = image_stats['nuclei'], cyto = image_stats['cyto'])
+    with open(savepath, 'w') as f:
+        json.dump(image_stats,f)
+    f.close()
+    
