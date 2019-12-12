@@ -335,6 +335,7 @@ def sharpenImage(input_image,alpha = 0.5):
     grid = (input_image.shape[0]//blocks[0] + 1, input_image.shape[1]//blocks[1] + 1)
 
     #run convolution
+    input_image = numpy.ascontiguousarray(input_image)
     voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
     houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
     Convolve2d[grid,blocks](input_image,vkernel,voutput)
@@ -659,7 +660,7 @@ def deconvolveColors(image):
     return hematoxylin, eosin
 
 
-def segmentNuclei(image, return3D = True, opening = False, radius = 3):
+def segmentNuclei(image, return3D = True, opening = False, radius = 3, min_size = 64):
     """
     
     Grabs binary mask of nuclei from H&E image using color deconvolution. 
@@ -693,7 +694,7 @@ def segmentNuclei(image, return3D = True, opening = False, radius = 3):
 
     #remove small objects
     labeled_mask = morph.label(binarized_nuclei)
-    shape_filtered_mask = morph.remove_small_objects(labeled_mask)
+    shape_filtered_mask = morph.remove_small_objects(labeled_mask, min_size = min_size)
 
     if opening:
         shape_filtered_mask = morph.binary_opening(shape_filtered_mask, morph.disk(radius))
