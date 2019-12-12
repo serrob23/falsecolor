@@ -141,7 +141,7 @@ def main():
 
             #Execute false coloring method
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
-                                            nuc_normfactor = 1.0*C_nuc, 
+                                            nuc_normfactor = 1.5*C_nuc, 
                                             cyto_normfactor = 3.72*C_cyt,
                                             run_normalization = True)
 
