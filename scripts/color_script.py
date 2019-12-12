@@ -33,7 +33,6 @@ from FalseColor.SaveThread import saveProcess
 import numpy 
 from scipy import ndimage
 import copy
-import multiprocessing as mp
 import argparse
 import h5py as h5
 import time
