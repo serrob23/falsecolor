@@ -57,12 +57,12 @@ def main():
     #index to start/stop processing, skip_k is the stepsize interval defaults to 1
     parser.add_argument("start_k", type = int, help = 'imagris file')
     parser.add_argument("stop_k", type = int, help= 'imagris file')
-    parser.add_argument("skip_k", type = int, nargs = '?', const = 1)
+    parser.add_argument("skip_k", type = int, nargs = '?', default = 1)
 
     #constants for coloring normalization and sharpening (alpha), defaults shown below
-    parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', const = 1.5)
-    parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', const = 3.72)
-    parser.add_argument("alpha", type = float, nargs = '?', const = 0.5, help = 'imaris file')
+    parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', default = 1.5)
+    parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', default = 3.72)
+    parser.add_argument("alpha", type = float, nargs = '?', default = 0.5, help = 'imaris file')
 
     #get arguments
     args = parser.parse_args()
