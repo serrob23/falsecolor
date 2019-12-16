@@ -105,7 +105,7 @@ def rapidFieldDivision(image,flat_field,output):
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    TPB=(32,32) , nuc_normfactor = 8500, cyto_normfactor=3000,
                    nuc_background = 50, cyto_background = 50,
-                   run_normalization = False):
+                   run_FlatField = False):
     """
     Parameters
     ----------
@@ -139,6 +139,9 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         THREADS PER BLOCK: (x_threads,y_threads)
         used for GPU threads
 
+    run_FlatField : bool
+        defaults to False, boolean to apply flatfield
+
     Returns
     -------
     RGB_image : 3D numpy array
@@ -167,7 +170,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #run background subtraction or normalization for nuclei
 
     #use flat fielding
-    if run_normalization:
+    if run_FlatField:
         nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         nuc_norm_mem = cuda.to_device(nuc_normfactor)
         rapidFieldDivision[blockspergrid,TPB](nuc_global_mem,nuc_norm_mem,pre_nuc_output)
@@ -187,7 +190,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #run background subtraction or normalization for cyto
 
     #use flat fielding
-    if run_normalization:
+    if run_FlatField:
         cyto_normfactor = numpy.ascontiguousarray(cyto_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
         rapidFieldDivision[blockspergrid,TPB](cyto_global_mem,cyto_norm_mem,pre_cyto_output)
