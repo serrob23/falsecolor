@@ -42,20 +42,20 @@ def main():
     parser = argparse.ArgumentParser()
 
     #directory containing data to false color
-    parser.add_argument("filepath", help='imaris file')
+    parser.add_argument("filepath", help = 'imaris file')
 
     #h5 data file
-    parser.add_argument("filename", help='imaris file')
+    parser.add_argument("filename", help = 'imaris file')
 
     #folder to save results
-    parser.add_argument("savefolder",help='imaris file')
+    parser.add_argument("savefolder", help = 'imaris file')
 
     #saved result format
-    parser.add_argument("format",type=str,help='imagris file')
+    parser.add_argument("format", type = str, help= 'imagris file')
 
     #index to start/stop processing, skip_k is the stepsize interval defaults to 1
-    parser.add_argument("start_k",type = int,help = 'imagris file')
-    parser.add_argument("stop_k",type = int,help='imagris file')
+    parser.add_argument("start_k", type = int, help = 'imagris file')
+    parser.add_argument("stop_k", type = int, help= 'imagris file')
     parser.add_argument("skip_k", type = int, nargs = '?', const = 1)
 
     #constants for coloring normalization and sharpening (alpha), defaults shown below

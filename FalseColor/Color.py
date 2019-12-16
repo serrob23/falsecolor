@@ -376,6 +376,44 @@ def getDefaultRGBSettings():
     return settings_dict
 
 
+def applyCLAHE(image, clahe = None, tileGridSize = (32,32), input_dtype = numpy.uint16):
+    """
+    Applies Contrast Limited Adaptive Histogram Equalization algorithm from OpenCV. 
+
+    Parameters 
+    ----------
+
+    image : 2D numpy array
+        Image for histogram equalization
+
+    clahe : None or cv2.CLAHE object
+        CV2 object to use for equalization
+
+    tileGridSize : tuple
+        Tuple of ints representing the windowsize for CLAHE, default is (32,32)
+
+    input_dtype : numpy dtype
+        Dtype to use for CLAHE object, defaults to numpy.uint16, cv2 CLAHE is compatible with either
+        numpy.uint8 or numpy.uint16
+
+    Returns
+    -------
+
+    equalized_image : 2D numpy array
+        Image with equalized historgram.
+
+    """
+
+    if clahe is None:
+        clahe = cv2.createCLAHE(tileGridSize = tileGridSize)
+
+    image = image.astype(input_dtype)
+
+    equalized_image = clahe.apply(image)
+
+    return equalized_image
+
+
 def falseColor(imageSet, output_dtype=numpy.uint8):
     """
     False coloring using Beer's law method based on:
