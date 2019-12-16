@@ -203,7 +203,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                                                 cyto_normfactor,pre_cyto_output)
     
     #create output array to iterate through
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]),dtype = numpy.int8) 
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]), dtype = numpy.int8) 
 
     #iterate through output array and assign values based on RGB settings
     for i,z in enumerate(RGB_image): #TODO: speed this up on GPU

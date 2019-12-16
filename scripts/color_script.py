@@ -33,7 +33,6 @@ from FalseColor.SaveThread import saveProcess
 import numpy 
 from scipy import ndimage
 import copy
-import multiprocessing as mp
 import argparse
 import h5py as h5
 import time
@@ -41,13 +40,30 @@ import time
 def main():
 
     parser = argparse.ArgumentParser()
+
+    #directory containing data to false color
     parser.add_argument("filepath", help='imaris file')
+
+    #h5 data file
     parser.add_argument("filename", help='imaris file')
-    parser.add_argument("alpha", type = float, help='imaris file')
+
+    #folder to save results
     parser.add_argument("savefolder",help='imaris file')
+
+    #saved result format
     parser.add_argument("format",type=str,help='imagris file')
+
+    #index to start/stop processing, skip_k is the stepsize interval defaults to 1
     parser.add_argument("start_k",type = int,help = 'imagris file')
     parser.add_argument("stop_k",type = int,help='imagris file')
+    parser.add_argument("skip_k", type = int, nargs = '?', const = 1)
+
+    #constants for coloring normalization and sharpening (alpha), defaults shown below
+    parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', const = 1.5)
+    parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', const = 3.72)
+    parser.add_argument("alpha", type = float, nargs = '?', const = 0.5, help = 'imaris file')
+
+    #get arguments
     args = parser.parse_args()
 
     #get path info
@@ -56,7 +72,7 @@ def main():
     save_dir = args.savefolder
 
     #load data
-    datapath = filepath + os.sep + filename
+    datapath = os.path.join(filepath, filename)
 
     f = h5.File(datapath,'r')
 
@@ -64,13 +80,18 @@ def main():
     nuclei_ds = f['/t00000/s00/4/cells']
     cyto_ds = f['/t00000/s01/4/cells']
 
-    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k on
-    #will be false colored.
+    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k 
+    #on will be processed, at intervals of skip_k
     start_k = args.start_k
     stop_k = args.stop_k
+    skip_k = args.skip_k
 
     #sharpening coefficient
     alpha = args.alpha
+
+    #normalization coefficients
+    nuc_norm_constant = args.Nuclei_Normfactor
+    cyto_norm_constant = args.Cyto_Normfactor
 
     if stop_k != 0:
         stop_k += start_k
@@ -78,14 +99,14 @@ def main():
     elif stop_k == 0:
         stop_k = nuclei_ds.shape[1]*16
 
-    print(start_k,stop_k)
+    print('Reading data from index:' start_k,'to ' ,stop_k, 'at stepsize = ', skip_k)
 
     #calculate flat field
     M_nuc,bkg_nuc = fc.getFlatField(nuclei_ds)
     M_cyt,bkg_cyt = fc.getFlatField(cyto_ds)
 
     dataQueue = mp.Queue()
-    save_thread = mp.Process(target=saveProcess,args=[dataQueue])
+    save_thread = mp.Process(target = saveProcess,args = [dataQueue])
     save_thread.start()
 
     #create reference to full res data
@@ -103,7 +124,7 @@ def main():
     print(cyto_RGBsettings)
 
 
-    for k in range(start_k,stop_k):
+    for k in range(start_k, stop_k, skip_k):
         if k == stop_k:
             break
         else:
@@ -141,8 +162,8 @@ def main():
 
             #Execute false coloring method
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
-                                            nuc_normfactor = 1.5*C_nuc, 
-                                            cyto_normfactor = 3.72*C_cyt,
+                                            nuc_normfactor = nuc_norm_constant*C_nuc, 
+                                            cyto_normfactor = cyto_norm_constant*C_cyt,
                                             run_FlatField = True)
 
             #append data to queue
