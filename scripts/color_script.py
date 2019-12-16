@@ -58,7 +58,7 @@ def main():
     parser.add_argument("stop_k",type = int,help='imagris file')
     parser.add_argument("skip_k", type = int, nargs = '?', const = 1)
 
-    #constants for coloring normalization and sharpening, defaults shown below
+    #constants for coloring normalization and sharpening (alpha), defaults shown below
     parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', const = 1.5)
     parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', const = 3.72)
     parser.add_argument("alpha", type = float, nargs = '?', const = 0.5, help = 'imaris file')
@@ -80,8 +80,8 @@ def main():
     nuclei_ds = f['/t00000/s00/4/cells']
     cyto_ds = f['/t00000/s01/4/cells']
 
-    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k on
-    #will be false colored.
+    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k 
+    #on will be processed, at intervals of skip_k
     start_k = args.start_k
     stop_k = args.stop_k
     skip_k = args.skip_k
@@ -106,7 +106,7 @@ def main():
     M_cyt,bkg_cyt = fc.getFlatField(cyto_ds)
 
     dataQueue = mp.Queue()
-    save_thread = mp.Process(target=saveProcess,args=[dataQueue])
+    save_thread = mp.Process(target = saveProcess,args = [dataQueue])
     save_thread.start()
 
     #create reference to full res data
@@ -162,8 +162,8 @@ def main():
 
             #Execute false coloring method
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
-                                            nuc_normfactor = 1.5*C_nuc, 
-                                            cyto_normfactor = 3.72*C_cyt,
+                                            nuc_normfactor = nuc_norm_constant*C_nuc, 
+                                            cyto_normfactor = cyto_norm_constant*C_cyt,
                                             run_normalization = True)
 
             #append data to queue
