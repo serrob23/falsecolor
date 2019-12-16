@@ -34,8 +34,8 @@ import numpy
 from scipy import ndimage
 import copy
 import argparse
-import h5py as h5
 import multiprocessing as mp
+import h5py as h5
 import time
 
 def main():
@@ -140,7 +140,7 @@ def main():
             t_nuc = time.time()
             nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]]
             nuclei = nuclei.astype(float)
-            nuclei -= 0.5*bkg_nuc
+            nuclei -= bkg_nuc
             nuclei = numpy.clip(nuclei,0,65535)
             print('read time nuclei', time.time()-t_nuc)
 
@@ -150,6 +150,10 @@ def main():
             cyto -= 3*bkg_cyt
             cyto = numpy.clip(cyto,0,65535)
             print('read time cyto', time.time() - t_cyt)
+
+
+            #Execute CLAHE on Nuclei
+            nuclei = fc.applyCLAHE(nuclei, tileGridSize = (8,8), clipLimit = 3.0)
 
             # sharpen images
             print('sharpening')
@@ -163,10 +167,9 @@ def main():
 
             #Execute false coloring method
             RGB_image = fc.rapidFalseColor(nuclei, cyto, nuclei_RGBsettings, cyto_RGBsettings,
-                                            nuc_normfactor = nuc_norm_constant*C_nuc, 
                                             cyto_normfactor = cyto_norm_constant*C_cyt,
-                                            run_FlatField_nuc = True,
-                                            run_FlatField_cyto = True)
+                                            run_FlatField_cyto = True, 
+                                            run_FlatField_nuc = False)
 
             #append data to queue
             save_file = '{:0>6d}'.format(k) + args.format
