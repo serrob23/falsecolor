@@ -164,7 +164,7 @@ def main():
             RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
                                             nuc_normfactor = nuc_norm_constant*C_nuc, 
                                             cyto_normfactor = cyto_norm_constant*C_cyt,
-                                            run_normalization = True)
+                                            run_FlatField = True)
 
             #append data to queue
             save_file = '{:0>6d}'.format(k) + args.format
