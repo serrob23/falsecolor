@@ -103,9 +103,8 @@ def rapidFieldDivision(image,flat_field,output):
         output[row,col] = tmp
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
-                   TPB=(32,32) , nuc_normfactor = 8500, cyto_normfactor=3000,
-                   nuc_background = 50, cyto_background = 50,
-                   run_FlatField = False):
+                   TPB = (32,32), nuc_normfactor = 8500, cyto_normfactor = 3000,
+                   run_FlatField_nuc = False, run_FlatField_cyto = False):
     """
     Parameters
     ----------
@@ -128,12 +127,6 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     cyto_normfactor : int or array
         Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
         numpy array representing the true flat field image.
-
-    nuc_background : int or float
-        defaults to 50, background threshold for subtraction
-
-    cyt_background : int or float
-        defaults to 50, background threshold for subtraction
         
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads)
@@ -170,7 +163,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #run background subtraction or normalization for nuclei
 
     #use flat fielding
-    if run_FlatField:
+    if run_FlatField_nuc:
         nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         nuc_norm_mem = cuda.to_device(nuc_normfactor)
         rapidFieldDivision[blockspergrid,TPB](nuc_global_mem,nuc_norm_mem,pre_nuc_output)
@@ -190,7 +183,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #run background subtraction or normalization for cyto
 
     #use flat fielding
-    if run_FlatField:
+    if run_FlatField_cyto:
         cyto_normfactor = numpy.ascontiguousarray(cyto_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
         rapidFieldDivision[blockspergrid,TPB](cyto_global_mem,cyto_norm_mem,pre_cyto_output)
@@ -376,7 +369,9 @@ def getDefaultRGBSettings():
     return settings_dict
 
 
-def applyCLAHE(image, clahe = None, tileGridSize = (32,32), input_dtype = numpy.uint16):
+def applyCLAHE(image, clahe = None, tileGridSize = (8,8), 
+                                    input_dtype = numpy.uint16,
+                                    clipLimit = 1.5):
     """
     Applies Contrast Limited Adaptive Histogram Equalization algorithm from OpenCV. 
 
@@ -406,7 +401,7 @@ def applyCLAHE(image, clahe = None, tileGridSize = (32,32), input_dtype = numpy.
 
     if clahe is None:
         #create clahe object
-        clahe = cv2.createCLAHE(tileGridSize = tileGridSize)
+        clahe = cv2.createCLAHE(tileGridSize = tileGridSize, clipLimit = clipLimit)
 
     #ensure image is of uint dtype
     image = image.astype(input_dtype)
