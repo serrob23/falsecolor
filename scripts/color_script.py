@@ -99,7 +99,7 @@ def main():
     elif stop_k == 0:
         stop_k = nuclei_ds.shape[1]*16
 
-    print('Reading data from index:' start_k,'to ' ,stop_k, 'at stepsize = ', skip_k)
+    print('Reading data from index:', start_k,'to ' ,stop_k, 'at stepsize = ', skip_k)
 
     #calculate flat field
     M_nuc,bkg_nuc = fc.getFlatField(nuclei_ds)
@@ -161,7 +161,7 @@ def main():
             print('False Coloring')
 
             #Execute false coloring method
-            RGB_image = fc.rapidFalseColor(nuclei,cyto,nuclei_RGBsettings,cyto_RGBsettings,
+            RGB_image = fc.rapidFalseColor(nuclei, cyto, nuclei_RGBsettings, cyto_RGBsettings,
                                             nuc_normfactor = nuc_norm_constant*C_nuc, 
                                             cyto_normfactor = cyto_norm_constant*C_cyt,
                                             run_FlatField = True)

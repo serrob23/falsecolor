@@ -405,13 +405,19 @@ def applyCLAHE(image, clahe = None, tileGridSize = (32,32), input_dtype = numpy.
     """
 
     if clahe is None:
+        #create clahe object
         clahe = cv2.createCLAHE(tileGridSize = tileGridSize)
 
+    #ensure image is of uint dtype
     image = image.astype(input_dtype)
 
+    #apply CLAHE
     equalized_image = clahe.apply(image)
 
-    return equalized_image
+    #Renormalize to original image levels
+    final_image = (image.max())*(equalized_image/equalized_image.max())
+
+    return final_image
 
 
 def falseColor(imageSet, output_dtype=numpy.uint8):
