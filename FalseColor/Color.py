@@ -371,9 +371,7 @@ def getDefaultRGBSettings():
 
 def applyCLAHE(image, clahe = None, tileGridSize = (8,8), 
                                     input_dtype = numpy.uint16,
-                                    clipLimit = 1.5,
-                                    gamma_correct = True,
-                                    g_factor = 1.5):
+                                    clipLimit = 0.048):
     """
     Applies Contrast Limited Adaptive Histogram Equalization algorithm from OpenCV. 
 
@@ -410,9 +408,6 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
 
     #apply CLAHE
     equalized_image = clahe.apply(image)
-
-    if gamma_correct:
-        equalized_image = ex.adjust_gamma(equalized_image,g_factor)
 
     #Renormalize to original image levels
     final_image = (image.max())*(equalized_image/equalized_image.max())
