@@ -60,8 +60,8 @@ def main():
     parser.add_argument("skip_k", type = int, nargs = '?', default = 1)
 
     #constants for coloring normalization and sharpening (alpha), defaults shown below
-    parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', default = 1.5)
-    parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', default = 3.72)
+    parser.add_argument("Nuclei_Normfactor", type = float, nargs = '?', default = 1.5)
+    parser.add_argument("Cyto_Normfactor", type = float, nargs = '?', default = 3.72)
     parser.add_argument("alpha", type = float, nargs = '?', default = 0.5, help = 'imaris file')
 
     #get arguments
@@ -78,6 +78,7 @@ def main():
     f = h5.File(datapath,'r')
 
     #downsampled data for flat fielding
+    ds_key = list(f['t00000/s00'].keys())
     nuclei_ds = f['/t00000/s00/4/cells']
     cyto_ds = f['/t00000/s01/4/cells']
 
@@ -139,8 +140,12 @@ def main():
             print('Reading Data')
             t_nuc = time.time()
             nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]]
+            nuclei = nuclei.astype(numpy.uint16)
+            print(nuclei.shape)
+            #Execute CLAHE on Nuclei
+            nuclei = fc.applyCLAHE(nuclei, tileGridSize = (8,8), clipLimit = 1.5)
             nuclei = nuclei.astype(float)
-            nuclei -= bkg_nuc
+            nuclei -= 0.5*bkg_nuc
             nuclei = numpy.clip(nuclei,0,65535)
             print('read time nuclei', time.time()-t_nuc)
 
@@ -152,8 +157,7 @@ def main():
             print('read time cyto', time.time() - t_cyt)
 
 
-            #Execute CLAHE on Nuclei
-            nuclei = fc.applyCLAHE(nuclei, tileGridSize = (8,8), clipLimit = 3.0)
+
 
             # sharpen images
             print('sharpening')
@@ -168,8 +172,9 @@ def main():
             #Execute false coloring method
             RGB_image = fc.rapidFalseColor(nuclei, cyto, nuclei_RGBsettings, cyto_RGBsettings,
                                             cyto_normfactor = cyto_norm_constant*C_cyt,
+                                            nuc_normfactor = nuc_norm_constant*C_nuc,
                                             run_FlatField_cyto = True, 
-                                            run_FlatField_nuc = False)
+                                            run_FlatField_nuc = True)
 
             #append data to queue
             save_file = '{:0>6d}'.format(k) + args.format
