@@ -805,6 +805,19 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
 
         return empty_mask
 
+def resetImage(corrected_image, original_image, mask_val = 0.1):
+    input_dtype = corrected_image.dtype
+    masked_image = corrected_image*fc.maskEmpty(original_image, mask_val=mask_val)
+    
+    final_image = numpy.where(masked_image[:,:,:] == 0, original_image,masked_image).astype(input_dtype)
+    return final_image
+
+def colorCorrection(image, reference, **kwargs):
+
+    matched_image = ex.match_histogram(image, reference, multichannel = True)
+
+    return matched_image
+
 
 def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
     """depreciated
