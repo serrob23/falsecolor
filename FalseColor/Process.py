@@ -39,6 +39,7 @@ import numpy
 import h5py as hp
 from numba import cuda, njit
 import json
+import matplotlib.pyplot as plt
 
 
 @njit
@@ -214,4 +215,91 @@ def saveImageStats(image_stats,folder,filename):
     with open(savepath, 'w') as f:
         json.dump(image_stats,f)
     f.close()
+
+
+def ViewImage(Image, title=None, do_hist = False, figsize = (6,4), 
+                    range_min=0, range_max=None, cmap='viridis', do_ticks = False):
+
+    """
+    Method for viewing images easily
+
+    Parameters 
+    ----------
+
+    Image : 2D numpy array
+        Image to view.
+
+    title : None or str
+        default to None, if not will be used as plot title.
+
+    do_hist : bool
+        default to False, if True will plot histogram of image in an adjacent subplot.
+
+    figsize : tuple
+        defaults to (6,4), tuple of ints which defines size of plotted image. 
+
+    range_min : int
+        defaults to 0, minimum range for histogram. 
+
+    range_max : None or int
+        defaults to None, if int maximum range for histogram.
+
+    cmap : str
+        defaults to 'viridis', colormap for plotting grayscale images. 
+
+    do_ticks : bool
+        defaults to False, plot x/y ticks and ticklabels on plot.
+
+
+
+    Returns
+    -------
+    f,ax : matplotlib figure, matplotlib axis
+        figure and axis
+
+    """
+    
+    if do_hist:
+        
+        f,ax = plt.subplots(ncols = 2,figsize = figsize)
+        
+        #plot image
+        ax[0].imshow(Image, cmap = cmap, vmin = Image.min(), vmax = Image.max())
+        ax[0].set_title('Image')
+        
+        #setup histogram
+        if range_max is None:
+            range_max = Image.max()
+        ax[1].hist(Image[Image != 0].ravel(),256,[range_min, range_max])
+
+        ax[1].set_title('Histogram')
+        ax[1].set_xlabel('Intenstity, A.U')
+
+        asp = numpy.diff(ax[1].get_xlim())[0] / np.diff(ax[1].get_ylim())[0]
+
+        ax[1].set_aspect(asp)
+        plt.subplots_adjust(wspace = 0.5)
+
+        #set title
+        if title is not None:
+            f.suptitle(title)
+            
+    else:
+
+        #plot image
+        f,ax = plt.subplots(figsize = figsize)
+        ax.imshow(Image, cmap = cmap)
+            
+        #set title
+        if title is not None:
+            ax.set_title(title)
+        
+            
+    if do_ticks == False:
+
+        #adjust tick parameters
+        plt.tick_params(axis = 'both' , which = 'both', top = False,
+                        bottom = False, left = False, right = False,
+                        labelbottom = False, labelleft = False)
+    return f,ax
     
