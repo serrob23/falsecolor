@@ -79,8 +79,8 @@ def main():
 
     #downsampled data for flat fielding
     ds_key = list(f['t00000/s00'].keys())
-    nuclei_ds = f['/t00000/s00/4/cells']
-    cyto_ds = f['/t00000/s01/4/cells']
+    nuclei_ds = f['/t00000/s00/3/cells']
+    cyto_ds = f['/t00000/s01/3/cells']
 
     #indices to pseudo color, if stop_k = 0 the entire dataset from start_k 
     #on will be processed, at intervals of skip_k
@@ -172,9 +172,9 @@ def main():
             #Execute false coloring method
             RGB_image = fc.rapidFalseColor(nuclei, cyto, nuclei_RGBsettings, cyto_RGBsettings,
                                             cyto_normfactor = cyto_norm_constant*C_cyt,
-                                            nuc_normfactor = nuc_norm_constant*C_nuc,
+                                            # nuc_normfactor = nuc_norm_constant*C_nuc,
                                             run_FlatField_cyto = True, 
-                                            run_FlatField_nuc = True)
+                                            run_FlatField_nuc = False)
 
             #append data to queue
             save_file = '{:0>6d}'.format(k) + args.format
