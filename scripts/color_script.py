@@ -60,8 +60,8 @@ def main():
     parser.add_argument("skip_k", type = int, nargs = '?', default = 1)
 
     #constants for coloring normalization and sharpening (alpha), defaults shown below
-    parser.add_argument("Nuclei_Normfactor", type = int, nargs = '?', default = 1.5)
-    parser.add_argument("Cyto_Normfactor", type = int, nargs = '?', default = 3.72)
+    parser.add_argument("Nuclei_Normfactor", type = float, nargs = '?', default = 1.5)
+    parser.add_argument("Cyto_Normfactor", type = float, nargs = '?', default = 3.72)
     parser.add_argument("alpha", type = float, nargs = '?', default = 0.5, help = 'imaris file')
 
     #get arguments
@@ -138,7 +138,7 @@ def main():
             #subtract background and reset values > 0 and < 2**16
             print('Reading Data')
             t_nuc = time.time()
-            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]]
+            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]].astype(numpy.uint16)
             nuclei = nuclei.astype(float)
             nuclei -= 0.5*bkg_nuc
             nuclei = numpy.clip(nuclei,0,65535)
