@@ -579,9 +579,9 @@ def getFlatField(image,tileSize=256,blockSize = 16):
 
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(numpy.floor(image.shape[0]/blockSize)*blockSize)
-    cols_max = int(numpy.floor(image.shape[2]/blockSize)*blockSize)
-    stacks_max = int(numpy.floor(image.shape[1]/blockSize)*blockSize)
+    rows_max = int(numpy.ceil(image.shape[0]/blockSize)*blockSize)
+    cols_max = int(numpy.ceil(image.shape[2]/blockSize)*blockSize)
+    stacks_max = int(numpy.ceil(image.shape[1]/blockSize)*blockSize)
 
 
     rows = numpy.arange(0, rows_max+int(tileSize/blockSize), int(tileSize/blockSize))
@@ -636,7 +636,7 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
 
     """
 
-    x0 = numpy.floor(k/tileSize)
+    x0 = numpy.ceil(k/tileSize)
     x1 = numpy.ceil(k/tileSize)
     x = k/tileSize
 
