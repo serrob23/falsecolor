@@ -343,7 +343,7 @@ def sharpenImage(input_image,alpha = 0.5):
     return final_image
 
 
-def getDefaultRGBSettings():
+def getDefaultRGBSettings(use_default = True):
 
     """returns empirically determined constants for nuclear/cyto channels
 
@@ -360,12 +360,17 @@ def getDefaultRGBSettings():
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
     """
-    k_cyto = 1.0
-    k_nuclei = 0.85
-    nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
-    cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
+    if use_default:
+        k_cyto = 1.0
+        k_nuclei = 0.85
+        nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
+        cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
 
-    settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+        settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+    else:
+        k_cyto = 1.0
+        nuclei_RGBsettings = [0.17, 0.27, 0.1]
+        cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
     return settings_dict
 
 
