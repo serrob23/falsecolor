@@ -343,7 +343,7 @@ def sharpenImage(input_image,alpha = 0.5):
     return final_image
 
 
-def getDefaultRGBSettings():
+def getDefaultRGBSettings(use_default = True):
 
     """returns empirically determined constants for nuclear/cyto channels
 
@@ -360,20 +360,24 @@ def getDefaultRGBSettings():
     Note: these settings currently only optimized for flat field method in
     rapidFalseColor
     """
-    k_cyto = 1.0
-    k_nuclei = 0.85
-    nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
-    cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
+    if use_default:
+        k_cyto = 1.0
+        k_nuclei = 0.85
+        nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
+        cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
 
-    settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+        settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
+    else:
+        k_cyto = 1.0
+        nuclei_RGBsettings = [0.17, 0.27, 0.1]
+        cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
+        settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
 
 
 def applyCLAHE(image, clahe = None, tileGridSize = (8,8), 
                                     input_dtype = numpy.uint16,
-                                    clipLimit = 1.5,
-                                    gamma_correct = True,
-                                    g_factor = 1.5):
+                                    clipLimit = 0.048):
     """
     Applies Contrast Limited Adaptive Histogram Equalization algorithm from OpenCV. 
 
@@ -410,9 +414,6 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
 
     #apply CLAHE
     equalized_image = clahe.apply(image)
-
-    if gamma_correct:
-        equalized_image = ex.adjust_gamma(equalized_image,g_factor)
 
     #Renormalize to original image levels
     final_image = (image.max())*(equalized_image/equalized_image.max())
@@ -584,9 +585,9 @@ def getFlatField(image,tileSize=256,blockSize = 16):
 
     midrange,background = getBackgroundLevels(image)
     
-    rows_max = int(numpy.floor(image.shape[0]/blockSize)*blockSize)
-    cols_max = int(numpy.floor(image.shape[2]/blockSize)*blockSize)
-    stacks_max = int(numpy.floor(image.shape[1]/blockSize)*blockSize)
+    rows_max = int(numpy.ceil(image.shape[0]/blockSize)*blockSize)
+    cols_max = int(numpy.ceil(image.shape[2]/blockSize)*blockSize)
+    stacks_max = int(numpy.ceil(image.shape[1]/blockSize)*blockSize)
 
 
     rows = numpy.arange(0, rows_max+int(tileSize/blockSize), int(tileSize/blockSize))
@@ -641,7 +642,7 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
 
     """
 
-    x0 = numpy.floor(k/tileSize)
+    x0 = numpy.ceil(k/tileSize)
     x1 = numpy.ceil(k/tileSize)
     x = k/tileSize
 
@@ -804,6 +805,19 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
     else:
 
         return empty_mask
+
+def resetImage(corrected_image, original_image, mask_val = 0.1):
+    input_dtype = corrected_image.dtype
+    masked_image = corrected_image*fc.maskEmpty(original_image, mask_val=mask_val)
+    
+    final_image = numpy.where(masked_image[:,:,:] == 0, original_image,masked_image).astype(input_dtype)
+    return final_image
+
+def colorCorrection(image, reference, **kwargs):
+
+    matched_image = ex.match_histogram(image, reference, multichannel = True)
+
+    return matched_image
 
 
 def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):

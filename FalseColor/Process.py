@@ -136,7 +136,7 @@ def getRGBStats(image, mask_val = 255):
 
 def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0, 
                         val_mask_value = 0,
-                        color_change = True):
+                        color_change = False):
 
     if color_change:
         """
@@ -275,7 +275,7 @@ def ViewImage(Image, title=None, do_hist = False, figsize = (6,4),
         ax[1].set_title('Histogram')
         ax[1].set_xlabel('Intenstity, A.U')
 
-        asp = numpy.diff(ax[1].get_xlim())[0] / np.diff(ax[1].get_ylim())[0]
+        asp = numpy.diff(ax[1].get_xlim())[0] / numpy.diff(ax[1].get_ylim())[0]
 
         ax[1].set_aspect(asp)
         plt.subplots_adjust(wspace = 0.5)
