@@ -136,7 +136,7 @@ def getRGBStats(image, mask_val = 255):
 
 def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0, 
                         val_mask_value = 0,
-                        color_change = True):
+                        color_change = False):
 
     if color_change:
         """

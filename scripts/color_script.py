@@ -78,8 +78,8 @@ def main():
     f = h5.File(datapath,'r')
 
     #downsampled data for flat fielding
-    nuclei_ds = f['/t00000/s00/3/cells']
-    cyto_ds = f['/t00000/s01/3/cells']
+    nuclei_ds = f['/t00000/s00/4/cells']
+    cyto_ds = f['/t00000/s01/4/cells']
 
     #indices to pseudo color, if stop_k = 0 the entire dataset from start_k 
     #on will be processed, at intervals of skip_k
@@ -118,7 +118,7 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    settings_dict = fc.getDefaultRGBSettings()
+    settings_dict = fc.getDefaultRGBSettings(use_default = False)
     nuclei_RGBsettings = settings_dict['nuclei']
     cyto_RGBsettings = settings_dict['cyto']
     print(nuclei_RGBsettings)

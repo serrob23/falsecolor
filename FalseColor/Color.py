@@ -371,6 +371,7 @@ def getDefaultRGBSettings(use_default = True):
         k_cyto = 1.0
         nuclei_RGBsettings = [0.17, 0.27, 0.1]
         cyto_RGB_settings = [0.05*k_cyto, 1.0*k_cyto, 0.54*k_cyto]
+        settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGB_settings}
     return settings_dict
 
 
