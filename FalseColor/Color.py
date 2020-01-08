@@ -482,9 +482,11 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8):
     k_cytoplasm= beta_dict['K_cyto']
     
     #execute background subtraction
+    nuclei = nuclei.astype(float)
     nuc_threshold = getBackgroundLevels(nuclei)[1]
     nuclei = preProcess(nuclei, threshold = nuc_threshold)
-    
+
+    cyto = cyto.astype(float)
     cyto_threshold = getBackgroundLevels(cyto)[1]
     cyto = preProcess(cyto, threshold = cyto_threshold)
 
