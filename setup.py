@@ -26,6 +26,6 @@ setup(name='FalseColor',
                         'matplotlib',
                         'json',
                         'os'
-                        ]
+                        ],
 
-                        )
+)
