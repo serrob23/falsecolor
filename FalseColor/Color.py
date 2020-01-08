@@ -108,11 +108,12 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
     Parameters
     ----------
+    
     nuclei : numpy array
-        Nuclear channel image
+        Nuclear channel image.
         
     cyto : numpy array
-        Cytoplasm channel image
+        Cytoplasm channel image.
         
     nuc_settings : list
         Settings of RGB constants for nuclear channel. Should be in order R, G, B.
@@ -129,8 +130,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         numpy array representing the true flat field image.
         
     TPB : tuple (int,int)
-        THREADS PER BLOCK: (x_threads,y_threads)
-        used for GPU threads
+        THREADS PER BLOCK: (x_threads,y_threads) used for GPU threads.
 
     run_FlatField : bool
         defaults to False, boolean to apply flatfield
@@ -221,22 +221,28 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
     """
-    Background subtraction optimized for GPU, used by rapidFalseColor
+    Background subtraction optimized for GPU, used by rapidFalseColor.
 
     Parameters
     ----------
 
     image : 2d numpy array, dtype = int16
-        image for background subtraction
+        Image for background subtraction.
 
     background : int
-        constant for subtraction
+        Constant for subtraction.
 
     norm_factor : int
-        empirically determaned constant for normalization after subtraction
+        Empirically determaned constant for normalization after subtraction. Helps prevent 
+    saturation.
 
     output : 2d numpy array
-        numpy array of zeros for gpu to assign values to
+        Numpy array of zeros for GPU to assign values to.
+
+    Returns
+    -------
+    This method requires an output array as an argument, the results of the compuation are stored 
+    there.
     """
 
     #create iterator for gpu  
@@ -261,11 +267,10 @@ def rapid_preProcess(image,background,norm_factor,output):
 @cuda.jit
 def Convolve2d(image,kernel,output):
     """
-    GPU based 2d convolution method
+    GPU based 2d convolution method.
 
     Parameters
     ----------
-    GPU accelerated 2D convolution 
 
     image : 2D numpy array
         Image for processing, written to GPU.
@@ -276,6 +281,10 @@ def Convolve2d(image,kernel,output):
     output : 2D numpy array
         Output array, storing result of convolution, written to GPU.
 
+    Returns
+    -------
+    This method requires an output array as an argument, the results of the compuation are stored 
+    there.
     """
 
     #create iterator
@@ -352,7 +361,8 @@ def getDefaultRGBSettings(use_default = True):
 
     use_default : bool
         Defaults to True. Which RGB settings to use, when False will use RGB settings which are
-    empirically derived from histology color analysis. 
+    empirically derived from histology color analysis. Note: these settings currently only optimized 
+    for flat field method in rapidFalseColor. 
 
 
     Returns
@@ -361,8 +371,7 @@ def getDefaultRGBSettings(use_default = True):
         Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
         derived RGB constants for false coloring.
 
-    Note: these settings currently only optimized for flat field method in
-    rapidFalseColor
+
     """
     if use_default:
         k_cyto = 1.0
