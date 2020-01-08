@@ -134,19 +134,43 @@ def getRGBStats(image, mask_val = 255):
 
     return image_stats
 
-def getHSVstats(nuclei, cyto, hue_mask_value = 0, sat_mask_value = 0, 
-                        val_mask_value = 0,
-                        color_change = False):
+def getHSVstats(nuclei, cyto, 
+                    hue_mask_value = 0, 
+                    sat_mask_value = 0, 
+                    val_mask_value = 0):
+    """
+    Method which returns dictionary containing useful image statistics from the input RGB image. 
+    Will be called from a save metadata method which will store data in a json.
 
-    if color_change:
-        """
-        TODO: fix but with hsv transfer of segmented images, 
-        turn entries in image stats into dicts, actually turn them into dataframes
 
-        and stop storing the actual values you dont need those!
-        """
-        nuclei = color.rgb2hsv(nuclei)
-        cyto = color.rgb2hsv(cyto)
+    Parameters
+    ----------
+
+    nuclei : 3D numpy array
+        Image array to analyze which has been converted from RGB to HSV space, representing the
+    hematoxylin, or equivalent, segmented from a histology or virually stained image. 
+
+    cyto : 3D numpy array
+        Image array to analyze which has been converted from RGB to HSV space, representing the
+    eosin, or equivalent, segmented from a histology or virually stained image.
+
+    mask_val : int
+        High threshold over which pixel values will be ignored
+
+    Returns
+    -------
+
+    image_stats : dict
+        Dictionary with 'Hue', 'Sat', 'Val' keys which each have a dict as follows:
+
+            'median' : median of sorted image data
+
+            '90th' : 90th percentile of sorted image data
+
+            '10th' : 10th percentile of sorted image data
+
+            'std' : standard deviation of sorted image data
+    """
 
     H_nuc = sortImage(nuclei[:,:,0], mask_val = hue_mask_value, greater_mode = True)
     S_nuc = sortImage(nuclei[:,:,1], mask_val = sat_mask_value, greater_mode = True)
@@ -221,7 +245,7 @@ def ViewImage(Image, title=None, do_hist = False, figsize = (6,4),
                     range_min=0, range_max=None, cmap='viridis', do_ticks = False):
 
     """
-    Method for viewing images easily
+    Method for viewing images easily.
 
     Parameters 
     ----------
@@ -249,8 +273,6 @@ def ViewImage(Image, title=None, do_hist = False, figsize = (6,4),
 
     do_ticks : bool
         defaults to False, plot x/y ticks and ticklabels on plot.
-
-
 
     Returns
     -------

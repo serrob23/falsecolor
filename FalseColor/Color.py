@@ -108,11 +108,12 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
     Parameters
     ----------
+
     nuclei : numpy array
-        Nuclear channel image
+        Nuclear channel image.
         
     cyto : numpy array
-        Cytoplasm channel image
+        Cytoplasm channel image.
         
     nuc_settings : list
         Settings of RGB constants for nuclear channel. Should be in order R, G, B.
@@ -121,16 +122,15 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         Settings of RGB constants for cytoplasm channel. Should be in order R, G, B.
 
     nuc_normfactor : int or array
-        Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
+        Defaults to empirically determined constant to reduce saturation. Otherwise it should be a 
         numpy array representing the true flat field image.
 
     cyto_normfactor : int or array
-        Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
+        Defaults to empirically determined constant to reduce saturation. Otherwise it should be a 
         numpy array representing the true flat field image.
         
     TPB : tuple (int,int)
-        THREADS PER BLOCK: (x_threads,y_threads)
-        used for GPU threads
+        THREADS PER BLOCK: (x_threads,y_threads) used for GPU threads.
 
     run_FlatField : bool
         defaults to False, boolean to apply flatfield
@@ -221,22 +221,28 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 @cuda.jit #direct GPU compiling
 def rapid_preProcess(image,background,norm_factor,output):
     """
-    Background subtraction optimized for GPU, used by rapidFalseColor
+    Background subtraction optimized for GPU, used by rapidFalseColor.
 
     Parameters
     ----------
 
     image : 2d numpy array, dtype = int16
-        image for background subtraction
+        Image for background subtraction.
 
     background : int
-        constant for subtraction
+        Constant for subtraction.
 
     norm_factor : int
-        empirically determaned constant for normalization after subtraction
+        Empirically determaned constant for normalization after subtraction. Helps prevent 
+    saturation.
 
     output : 2d numpy array
-        numpy array of zeros for gpu to assign values to
+        Numpy array of zeros for GPU to assign values to.
+
+    Returns
+    -------
+    This method requires an output array as an argument, the results of the compuation are stored 
+    there.
     """
 
     #create iterator for gpu  
@@ -261,11 +267,10 @@ def rapid_preProcess(image,background,norm_factor,output):
 @cuda.jit
 def Convolve2d(image,kernel,output):
     """
-    GPU based 2d convolution method
+    GPU based 2d convolution method.
 
     Parameters
     ----------
-    GPU accelerated 2D convolution 
 
     image : 2D numpy array
         Image for processing, written to GPU.
@@ -276,6 +281,10 @@ def Convolve2d(image,kernel,output):
     output : 2D numpy array
         Output array, storing result of convolution, written to GPU.
 
+    Returns
+    -------
+    This method requires an output array as an argument, the results of the compuation are stored 
+    there.
     """
 
     #create iterator
@@ -345,10 +354,15 @@ def sharpenImage(input_image,alpha = 0.5):
 
 def getDefaultRGBSettings(use_default = True):
 
-    """returns empirically determined constants for nuclear/cyto channels
+    """Returns empirically determined constants for nuclear/cyto channels
 
     Parameters
     ----------
+
+    use_default : bool
+        Defaults to True. Which RGB settings to use, when False will use RGB settings which are
+        empirically derived from histology color analysis. Note: these settings currently only 
+        optimized for flat field method in rapidFalseColor. 
 
 
     Returns
@@ -357,8 +371,7 @@ def getDefaultRGBSettings(use_default = True):
         Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
         derived RGB constants for false coloring.
 
-    Note: these settings currently only optimized for flat field method in
-    rapidFalseColor
+
     """
     if use_default:
         k_cyto = 1.0
@@ -421,17 +434,19 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
     return final_image
 
 
-def falseColor(imageSet, output_dtype=numpy.uint8):
+def falseColor(nuclei, cyto, output_dtype=numpy.uint8):
     """
-    False coloring using Beer's law method based on:
+    Two channel virtual H&E coloring using Beer's law method based on:
     Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
 
 
     Parameters
     ----------
-    imageSet : 3D numpy array
-        dimmensions are [X,Y,C]
-        for use with process images in FCdataobject
+    nuclei : 2D numpy array
+       Image of nuclear stain (hematoxylin equivalent) for the Virtual H&E transformation.
+
+    cyto : 2D numpy array
+        Image of cytoplasm stain (eosin equivalent) for the Virtual H&E transformation
 
     channelIDs = list
         keys to grab settings from beta_dict
@@ -460,18 +475,18 @@ def falseColor(imageSet, output_dtype=numpy.uint8):
     #entries are lists in order of RGB constants
     settings = getDefaultRGBSettings()
 
-    nuclei = imageSet[:,:,0].astype(float)
     constants_nuclei = settings['nuclei']
     k_nuclei = beta_dict['K_nuclei']
 
-    cyto = imageSet[:,:,1].astype(float)
     constants_cyto = settings['cyto']
     k_cytoplasm= beta_dict['K_cyto']
     
     #execute background subtraction
+    nuclei = nuclei.astype(float)
     nuc_threshold = getBackgroundLevels(nuclei)[1]
     nuclei = preProcess(nuclei, threshold = nuc_threshold)
-    
+
+    cyto = cyto.astype(float)
     cyto_threshold = getBackgroundLevels(cyto)[1]
     cyto = preProcess(cyto, threshold = cyto_threshold)
 
@@ -668,7 +683,6 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
         C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
         C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
-    print('interpolating')
     C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
 
     C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')

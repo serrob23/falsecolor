@@ -36,10 +36,12 @@ from FalseColor import Process
 
 def saveProcess(queue):
     """
+    Parameters
+    ----------
+
     queue : multiprocessing queue
 
-        message : result of queue.get()
-            has the following properties in this order:
+        message : result of queue.get(), has the following properties in this order:
 
                 path : str or pathlike
                     top level storage directory for data
@@ -58,6 +60,9 @@ def saveProcess(queue):
 
                 token : None or str
                     token will be a str when thread stop is called
+    
+    Returns
+    -------
     """
     while True:
 
