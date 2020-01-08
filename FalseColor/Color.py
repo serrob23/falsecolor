@@ -108,7 +108,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
     Parameters
     ----------
-    
+
     nuclei : numpy array
         Nuclear channel image.
         
@@ -122,11 +122,11 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         Settings of RGB constants for cytoplasm channel. Should be in order R, G, B.
 
     nuc_normfactor : int or array
-        Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
+        Defaults to empirically determined constant to reduce saturation. Otherwise it should be a 
         numpy array representing the true flat field image.
 
     cyto_normfactor : int or array
-        Defaults to empirically determined constant for flat fielding. Otherwise it should be a 
+        Defaults to empirically determined constant to reduce saturation. Otherwise it should be a 
         numpy array representing the true flat field image.
         
     TPB : tuple (int,int)
@@ -361,8 +361,8 @@ def getDefaultRGBSettings(use_default = True):
 
     use_default : bool
         Defaults to True. Which RGB settings to use, when False will use RGB settings which are
-    empirically derived from histology color analysis. Note: these settings currently only optimized 
-    for flat field method in rapidFalseColor. 
+        empirically derived from histology color analysis. Note: these settings currently only 
+        optimized for flat field method in rapidFalseColor. 
 
 
     Returns
