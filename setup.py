@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(name='FalseColor',
     packages = ['FalseColor'],
-    version='1.0.1',
+    version='1.1.1',
     license = 'GNU Affero General Public License v3.0',
     description='Methods for H&E pseudo coloring of grayscale fluorescent images',
     author='Robert Serafin',
@@ -24,8 +24,6 @@ setup(name='FalseColor',
                         'tifffile',
                         'h5py',
                         'matplotlib',
-                        'json',
-                        'os'
                         ],
 
 )
