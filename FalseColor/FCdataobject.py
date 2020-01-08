@@ -31,7 +31,6 @@ import os
 import tifffile as tf
 import numpy
 from pathos.multiprocessing import ProcessingPool
-from functools import partial
 import h5py as hp
 import FalseColor.Color as fc
 
