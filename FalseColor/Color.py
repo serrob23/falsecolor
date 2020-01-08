@@ -345,10 +345,14 @@ def sharpenImage(input_image,alpha = 0.5):
 
 def getDefaultRGBSettings(use_default = True):
 
-    """returns empirically determined constants for nuclear/cyto channels
+    """Returns empirically determined constants for nuclear/cyto channels
 
     Parameters
     ----------
+
+    use_default : bool
+        Defaults to True. Which RGB settings to use, when False will use RGB settings which are
+    empirically derived from histology color analysis. 
 
 
     Returns
@@ -668,7 +672,6 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
         C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
         C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
-    print('interpolating')
     C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
 
     C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
