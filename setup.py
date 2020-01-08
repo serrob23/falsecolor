@@ -29,11 +29,11 @@ setup(name='FalseColor',
                         'os'
                         ],
     classifiers = [
-    'Development Status :: 5 - Production/Stable',
-    'Intended Audience :: Developers',
-    'License :: OSI Approved :: GNU GPL v3.0',
-    'Programming Language :: Python :: 3.6',
-    'Programming Language :: Python :: 3.7'
+        'Development Status :: 5 - Production/Stable',
+        'Intended Audience :: Developers',
+        'License :: GNU GPL v3.0',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7'
     ],
 
                         )
