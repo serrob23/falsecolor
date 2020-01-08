@@ -434,17 +434,19 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
     return final_image
 
 
-def falseColor(imageSet, output_dtype=numpy.uint8):
+def falseColor(nuclei, cyto, output_dtype=numpy.uint8):
     """
-    False coloring using Beer's law method based on:
+    Two channel virtual H&E coloring using Beer's law method based on:
     Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
 
 
     Parameters
     ----------
-    imageSet : 3D numpy array
-        dimmensions are [X,Y,C]
-        for use with process images in FCdataobject
+    nuclei : 2D numpy array
+       Image of nuclear stain (hematoxylin equivalent) for the Virtual H&E transformation.
+
+    cyto : 2D numpy array
+        Image of cytoplasm stain (eosin equivalent) for the Virtual H&E transformation
 
     channelIDs = list
         keys to grab settings from beta_dict
@@ -473,11 +475,9 @@ def falseColor(imageSet, output_dtype=numpy.uint8):
     #entries are lists in order of RGB constants
     settings = getDefaultRGBSettings()
 
-    nuclei = imageSet[:,:,0].astype(float)
     constants_nuclei = settings['nuclei']
     k_nuclei = beta_dict['K_nuclei']
 
-    cyto = imageSet[:,:,1].astype(float)
     constants_cyto = settings['cyto']
     k_cytoplasm= beta_dict['K_cyto']
     
