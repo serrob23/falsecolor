@@ -24,6 +24,9 @@ setup(name='FalseColor',
                         'tifffile',
                         'h5py',
                         'functools',
+                        'matplotlib',
+                        'json',
+                        'os'
                         ],
     classifiers = [
     'Development Status :: 5 - Production/Stable',
@@ -31,7 +34,6 @@ setup(name='FalseColor',
     'License :: OSI Approved :: GNU Affero General Public License v3.0'
     'Programming Language :: Python :: 3.6',
     'Programming Language :: Python :: 3.7'
-
     ],
 
                         )
