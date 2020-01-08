@@ -23,7 +23,6 @@ setup(name='FalseColor',
                         'numba',
                         'tifffile',
                         'h5py',
-                        'functools',
                         'matplotlib',
                         'json',
                         'os'
