@@ -2,7 +2,7 @@ from distutils.core import setup
 
 setup(name='FalseColor',
     packages = ['FalseColor'],
-    version='0.1.6',
+    version='1.0.7',
     license = 'GNU Affero General Public License v3.0',
     description='Methods for H&E pseudo coloring of grayscale fluorescent images',
     author='Robert Serafin',

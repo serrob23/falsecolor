@@ -259,7 +259,7 @@ class DataObject(object):
                 processed_images.append(self.pool.map(func, *imageSet))
 
             if dtype is None:
-                return numpy.asarray(processed_images)
-            
+                return numpy.asarray(processed_images)[0]
+                            
             else:
-                return numpy.asarray(processed_images, dtype = dtype)
+                return numpy.asarray(processed_images, dtype = dtype)[0]
