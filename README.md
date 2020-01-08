@@ -25,7 +25,7 @@ data_path = 'path/to/data' #contains .h5 file
 dataSet = DataObject(data_path)
 
 #zips data into imageSet property of Dataobject 
-#imageSet will be a 4D array of images with [Z,X,Y,C]
+#imageSet will be a 4D array of images with [C,Z,X,Y]
 Dataset.setupH5data() 
 ```
 Batch process data using DataObjects processImages method:
