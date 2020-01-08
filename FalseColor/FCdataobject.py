@@ -187,7 +187,7 @@ class DataObject(object):
         else:
             dataset = self.loadH5(self.directory, dataID=dataID, channelIDs=channelIDs)
 
-        return dataset
+        self.imageSet = numpy.asarray(dataset)
         
     
     def setupProcessing(self,ncpus):
