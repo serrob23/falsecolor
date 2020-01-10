@@ -785,6 +785,11 @@ def segmentNuclei(image, return3D = True, opening = True,
         #ensure that nuclei are segmented out of cyto mask
         binary_cyto = binary_cyto*(binary_mask<1)
 
+        # binary closing to remove pepper noise
+        if opening:
+            binary_cyto = morph.binary_closing(binary_cyto, morph.disk(radius))
+
+
         #create 3D array and rearrange shape to match an RGB image
         if return3D:
             binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto, binary_cyto, 
