@@ -722,7 +722,9 @@ def deconvolveColors(image):
     return hematoxylin, eosin
 
 
-def segmentNuclei(image, return3D = True, opening = False, radius = 3, min_size = 64):
+def segmentNuclei(image, return3D = True, opening = True, 
+                         radius = 3, min_size = 64,
+                         return_cyto = False):
     """
     
     Grabs binary mask of nuclei from H&E image using color deconvolution. 
@@ -733,8 +735,11 @@ def segmentNuclei(image, return3D = True, opening = False, radius = 3, min_size 
     image : 3D numpy array 
         H&E stained RGB image in the form [X, Y, C]
 
-    return3D : bool, default = False
-        Return 3D version of mask
+    return3D : bool, 
+        Defaults to False, return 3D version of mask
+
+    return_cyto : bool
+        Defaults to False, will return a binary mask for cytoplasm from color deconvolved RGB image
 
     Returns
     -------
@@ -758,27 +763,45 @@ def segmentNuclei(image, return3D = True, opening = False, radius = 3, min_size 
     labeled_mask = morph.label(binarized_nuclei)
     shape_filtered_mask = morph.remove_small_objects(labeled_mask, min_size = min_size)
 
+    #binary opening to separate objects
     if opening:
         shape_filtered_mask = morph.binary_opening(shape_filtered_mask, morph.disk(radius))
 
-    #create final mask and return object
+    #remove labels from nuclear mask
+    binary_mask = (shape_filtered_mask > 0)
+
+    #create a binary mask for cytoplasm
+    if return_cyto:
+
+        #median filter cyto for optimized otsu threshold
+        median_filtered_cyto = filt.median(cyto)
+
+        #calculate threshold and create initial binary mask
+        cyto_threshold = filt.threshold_otsu(median_filtered_cyto)
+
+        #create binary mask
+        binary_cyto = (median_filtered_cyto > cyto_threshold).astype(int)
+
+        #ensure that nuclei are segmented out of cyto mask
+        binary_cyto = binary_cyto*(binary_mask<1)
+
+        #create 3D array and rearrange shape to match an RGB image
+        if return3D:
+            binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto, binary_cyto, 
+                                                                    binary_cyto]), 0, -1)
+
+    #create 3D array and rearrange shape to match an RGB image
     if return3D:
+        binary_mask = numpy.moveaxis(numpy.asarray([shape_filtered_mask, 
+                                                    shape_filtered_mask, 
+                                                    shape_filtered_mask]), 0, -1)
 
-        binary_mask = numpy.ones(image.shape, dtype = int)
-
-        for i in range(binary_mask.shape[-1]):
-
-            binary_mask[:,:,i] *= (shape_filtered_mask > 0).astype(int)
-
-        #return 3D array
-        return binary_mask
+    #return mask
+    if return_cyto:
+        return binary_mask.astype(int), binary_cyto.astype(int)
 
     else:
-
-        binary_mask = (shape_filtered_mask > 0).astype(int)
-
-        #return 2D array
-        return binary_mask
+        return binary_mask.astpe(int)
 
 
 def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
