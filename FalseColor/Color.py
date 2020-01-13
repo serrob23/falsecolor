@@ -104,7 +104,8 @@ def rapidFieldDivision(image,flat_field,output):
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    TPB = (32,32), nuc_normfactor = 8500, cyto_normfactor = 3000,
-                   run_FlatField_nuc = False, run_FlatField_cyto = False):
+                   run_FlatField_nuc = False, run_FlatField_cyto = False, nuc_bg_threshold = 50,
+                   cyto_bg_threshold = 50):
     """
     Parameters
     ----------
@@ -134,6 +135,14 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     run_FlatField : bool
         defaults to False, boolean to apply flatfield
+
+    nuc_bg_threshold = int
+        defaults to 50, threshold level for calculating nuclear background
+
+    cyto_bg_threshold = int
+        defaults to 50, threshold level for calculating cytoplasmic background
+
+
 
     Returns
     -------
@@ -171,7 +180,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #otherwise use standard background subtraction
     else:
         k_nuclei = 0.08
-        nuc_background = getBackgroundLevels(nuclei)[1]
+        nuc_background = getBackgroundLevels(nuclei, threshold = nuc_bg_threshold)[1]
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
     
@@ -191,7 +200,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     # otherwise use standard background subtraction
     else:
         k_cyto = 0.012
-        cyto_background = getBackgroundLevels(cyto)[1]
+        cyto_background = getBackgroundLevels(cyto, threshold = cyto_bg_threshold)[1]
         rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
                                                 cyto_normfactor,pre_cyto_output)
     
@@ -434,7 +443,8 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
     return final_image
 
 
-def falseColor(nuclei, cyto, output_dtype=numpy.uint8):
+def falseColor(nuclei, cyto, output_dtype=numpy.uint8, 
+                    nuc__bg_threshold = 50, cyto_bg_threshold = 50):
     """
     Two channel virtual H&E coloring using Beer's law method based on:
     Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
@@ -455,6 +465,12 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8):
 
     output_dtype : numpy.uint8
         output datatype for final RGB image
+
+    nuc_bg_threshold = int
+        defaults to 50, threshold level for calculating nuclear background
+
+    cyto_bg_threshold = int
+        defaults to 50, threshold level for calculating cytoplasmic background
 
 
     Returns
@@ -483,11 +499,11 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8):
     
     #execute background subtraction
     nuclei = nuclei.astype(float)
-    nuc_threshold = getBackgroundLevels(nuclei)[1]
+    nuc_threshold = getBackgroundLevels(nuclei, nuc_bg_threshold)[1]
     nuclei = preProcess(nuclei, threshold = nuc_threshold)
 
     cyto = cyto.astype(float)
-    cyto_threshold = getBackgroundLevels(cyto)[1]
+    cyto_threshold = getBackgroundLevels(cyto, cyto_bg_threshold)[1]
     cyto = preProcess(cyto, threshold = cyto_threshold)
 
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
