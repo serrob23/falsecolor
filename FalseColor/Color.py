@@ -104,7 +104,8 @@ def rapidFieldDivision(image,flat_field,output):
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                    TPB = (32,32), nuc_normfactor = 8500, cyto_normfactor = 3000,
-                   run_FlatField_nuc = False, run_FlatField_cyto = False):
+                   run_FlatField_nuc = False, run_FlatField_cyto = False, nuc_bg_threshold = 50,
+                   cyto_bg_threshold = 50):
     """
     Parameters
     ----------
@@ -134,6 +135,14 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     run_FlatField : bool
         defaults to False, boolean to apply flatfield
+
+    nuc_bg_threshold = int
+        defaults to 50, threshold level for calculating nuclear background
+
+    cyto_bg_threshold = int
+        defaults to 50, threshold level for calculating cytoplasmic background
+
+
 
     Returns
     -------
@@ -171,7 +180,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     #otherwise use standard background subtraction
     else:
         k_nuclei = 0.08
-        nuc_background = getBackgroundLevels(nuclei)[1]
+        nuc_background = getBackgroundLevels(nuclei, threshold = nuc_bg_threshold)[1]
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
     
@@ -191,7 +200,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     # otherwise use standard background subtraction
     else:
         k_cyto = 0.012
-        cyto_background = getBackgroundLevels(cyto)[1]
+        cyto_background = getBackgroundLevels(cyto, threshold = cyto_bg_threshold)[1]
         rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
                                                 cyto_normfactor,pre_cyto_output)
     
