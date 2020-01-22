@@ -822,7 +822,7 @@ def segmentNuclei(image, return3D = True, opening = True,
         return binary_mask.astype(int), binary_cyto.astype(int)
 
     else:
-        return binary_mask.astpe(int)
+        return binary_mask.astype(int)
 
 
 def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
