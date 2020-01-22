@@ -444,7 +444,7 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
 
 
 def falseColor(nuclei, cyto, output_dtype=numpy.uint8, 
-                    nuc_bg_threshold = 50, cyto_bg_threshold = 50):
+                    nuc_bg_threshold = 50, cyto_bg_threshold = 50, nuc_normfactor = None, cyto_normfactor=None):
     """
     Two channel virtual H&E coloring using Beer's law method based on:
     Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
@@ -500,11 +500,11 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
     #execute background subtraction
     nuclei = nuclei.astype(float)
     nuc_threshold = getBackgroundLevels(nuclei, nuc_bg_threshold)[1]
-    nuclei = preProcess(nuclei, threshold = nuc_threshold)
+    nuclei = preProcess(nuclei, threshold = nuc_threshold, normfactor = nuc_normfactor)
 
     cyto = cyto.astype(float)
     cyto_threshold = getBackgroundLevels(cyto, cyto_bg_threshold)[1]
-    cyto = preProcess(cyto, threshold = cyto_threshold)
+    cyto = preProcess(cyto, threshold = cyto_threshold, normfactor = cyto_normfactor)
 
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
 
