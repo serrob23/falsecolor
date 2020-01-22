@@ -520,7 +520,7 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
     return RGB_image.astype(output_dtype)
 
 
-def preProcess(image, threshold = 50):
+def preProcess(image, threshold = 50, normfactor = None):
     """
     Method used for background subtracting data with a fixed value
 
@@ -548,10 +548,11 @@ def preProcess(image, threshold = 50):
 
     #calculate normalization factor
     image = numpy.power(image,0.85)
-    image_mean = numpy.mean(image[image>threshold])*8
+    if normfactor is None:
+        normfactor = numpy.mean(image[image>threshold])*8
 
     #convert into 8bit range
-    processed_image = image*(65535/image_mean)*(255/65535)
+    processed_image = image*(65535/normfactor)*(255/65535)
 
     return processed_image
 
