@@ -1,4 +1,8 @@
-from distutils.core import setup
+from setuptools import setup
+
+with open('requirements.txt','r') as f:
+    requires = f.read().splitlines()
+f.close()
 
 setup(name='FalseColor',
     packages = ['FalseColor'],
@@ -14,16 +18,6 @@ setup(name='FalseColor',
                             'Color Translation', 
                             'Virtual Staining',
                             'Histology'],
-    install_requires =[
-                        'opencv-python',
-                        'numpy',
-                        'scikit-image',
-                        'scipy',
-                        'pathos',
-                        'numba',
-                        'tifffile',
-                        'h5py',
-                        'matplotlib',
-                        ],
+    install_requires = requires,
 
 )
