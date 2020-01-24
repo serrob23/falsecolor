@@ -6,7 +6,7 @@ f.close()
 
 setup(name='FalseColor',
     packages = ['FalseColor'],
-    version='1.1.1',
+    version='1.1.2',
     license = 'GNU Affero General Public License v3.0',
     description='Methods for H&E pseudo coloring of grayscale fluorescent images',
     author='Robert Serafin',
