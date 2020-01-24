@@ -39,7 +39,7 @@ import cv2
 import numpy
 from numba import cuda, njit
 import math
-from astropy.convolution import Gaussian2Dkernel
+from astropy.convolution import Gaussian2DKernel
 
 
 @cuda.jit #direct GPU compiling
@@ -389,7 +389,7 @@ def gaussianBlur(image, sigma = 5):
         image = image.astype(float)
 
     #create 2D gaussian kernel and convert to numpy array
-    gaussian_kernel = Gaussian2Dkernel(sigma)
+    gaussian_kernel = Gaussian2DKernel(sigma)
     gaussian_kernel = numpy.asarray(gaussian_kernel, dtype = float)
 
     #create block/grid for cuda.jit

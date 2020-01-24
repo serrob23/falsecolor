@@ -1,8 +1,12 @@
-from distutils.core import setup
+from setuptools import setup
+
+with open('requirements.txt','r') as f:
+    requires = f.read().splitlines()
+f.close()
 
 setup(name='FalseColor',
     packages = ['FalseColor'],
-    version='1.1.1',
+    version='1.1.2',
     license = 'GNU Affero General Public License v3.0',
     description='Methods for H&E pseudo coloring of grayscale fluorescent images',
     author='Robert Serafin',
@@ -14,16 +18,6 @@ setup(name='FalseColor',
                             'Color Translation', 
                             'Virtual Staining',
                             'Histology'],
-    install_requires =[
-                        'opencv-python',
-                        'numpy',
-                        'scikit-image',
-                        'scipy',
-                        'pathos',
-                        'numba',
-                        'tifffile',
-                        'h5py',
-                        'matplotlib',
-                        ],
+    install_requires = requires,
 
 )
