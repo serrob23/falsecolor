@@ -6,7 +6,7 @@ f.close()
 
 setup(name='FalseColor',
     packages = ['FalseColor'],
-    version='1.1.2',
+    version='1.1.3',
     license = 'GNU Affero General Public License v3.0',
     description='Methods for H&E pseudo coloring of grayscale fluorescent images',
     author='Robert Serafin',
@@ -19,5 +19,6 @@ setup(name='FalseColor',
                             'Virtual Staining',
                             'Histology'],
     install_requires = requires,
+    python_requires='>=3.6',
 
 )
