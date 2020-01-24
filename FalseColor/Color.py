@@ -39,6 +39,7 @@ import cv2
 import numpy
 from numba import cuda, njit
 import math
+from astropy.convolution import Gaussian2Dkernel
 
 
 @cuda.jit #direct GPU compiling
@@ -361,6 +362,49 @@ def sharpenImage(input_image,alpha = 0.5):
     return final_image
 
 
+def gaussianBlur(image, sigma = 5):
+    """
+    Cuda accelerated gaussian blurring using Convolve2D.
+
+    Parameters
+    ----------
+
+    image : numpy array
+        Image for blurring
+
+    sigma : int
+        Standard deviation of 2D gaussian kernel
+
+
+    Returns
+    -------
+
+    blurred_image : numpy array
+        image convolved with gaussian kernel
+
+    """
+
+    #ensure image dtype is float
+    if image.dtype != float:
+        image = image.astype(float)
+
+    #create 2D gaussian kernel and convert to numpy array
+    gaussian_kernel = Gaussian2Dkernel(sigma)
+    gaussian_kernel = numpy.asarray(gaussian_kernel, dtype = float)
+
+    #create block/grid for cuda.jit
+    blocks = (32,32)
+    grid = (image.shape[0]//blocks[0] + 1, image.shape[1]//blocks[1] + 1)
+
+    #create output array
+    blurred_image = numpy.zeros(image.shape)
+
+    #run convolution
+    image = numpy.ascontiguousarray(image)
+    Convolve2d[grid,blocks](image, gaussian_kernel, blurred_image)
+
+    return blurred_image
+
 def getDefaultRGBSettings(use_default = True):
 
     """Returns empirically determined constants for nuclear/cyto channels
@@ -591,7 +635,7 @@ def getBackgroundLevels(image, threshold = 50):
     return hi_val,background
 
 
-def getFlatField(image,tileSize=256,blockSize = 16):
+def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
 
     """
     Returns downsampled flat field of image data and calculated background levels
@@ -615,7 +659,7 @@ def getFlatField(image,tileSize=256,blockSize = 16):
         Background level for input image
     """
 
-    midrange,background = getBackgroundLevels(image)
+    midrange,background = getBackgroundLevels(image, threshold = bg_threshold)
     
     rows_max = int(numpy.ceil(image.shape[0]/blockSize)*blockSize)
     cols_max = int(numpy.ceil(image.shape[2]/blockSize)*blockSize)
