@@ -38,7 +38,6 @@ import cv2
 import numpy
 import h5py as hp
 from numba import cuda, njit
-import json
 import matplotlib.pyplot as plt
 
 
@@ -214,31 +213,6 @@ def getHSVstats(nuclei, cyto,
     image_stats['cyto']['Val']['std'] = numpy.std(V_cyto)
 
     return image_stats
-
-def saveImageStats(image_stats,folder,filename):
-    """
-    Parameters
-    ----------
-
-    image_stats : dict
-        dictionary of the same form as the one returned from getRGBStats
-
-    folder : str or path
-        string or pathlike object corresponding to the storage directory where the npz file 
-        will be saved
-
-    filename : str
-        name of file to be saved
-
-    Returns
-    -------
-    """
-
-    savepath = os.path.join(folder,filename)
-
-    with open(savepath, 'w') as f:
-        json.dump(image_stats,f)
-    f.close()
 
 
 def ViewImage(Image, title=None, do_hist = False, figsize = (6,4), 
