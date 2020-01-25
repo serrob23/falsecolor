@@ -4,8 +4,12 @@ Python module for H&E pseudo coloring for greyscale fluorescent images of datase
 
 
 ## Installation
+FalseColor Python can be installed using pip:
+'''bash
+pip install FalseColor
+'''
 
-Run setup.py install while in the working directory.
+Or by running setup.py install while in the working directory.
 
 ```bash
 python setup.py install
