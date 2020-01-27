@@ -38,8 +38,7 @@ cyto_RGBsettings = [R,G,B] # list of floats (0.0:1.0) for color levels in cyto c
 
 #nuclei,cyto are 2D numpy arrays for false coloring see GPU example.ipynb for more details
 pseudo_colored_data = fc.rapidFalseColor(nuclei,cyto,
-                                         nuclei_RGBsettings,cyto_RGBsettings, 
-                                         run_normalization=False)
+                                         nuclei_RGBsettings,cyto_RGBsettings)
 ```
 
 ## Contributing
