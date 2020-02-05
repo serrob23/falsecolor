@@ -4,6 +4,12 @@ Python module for H&E pseudo coloring for greyscale fluorescent images of datase
 
 
 ## Installation
+
+In order to use FalseColor Python's GPU acceleration install cudatoolkit using conda:
+```bash
+conda install cudatoolkit
+```
+
 FalseColor Python can be installed using pip:
 
 ```bash
