@@ -390,7 +390,7 @@ def gaussianBlur(image, sigma = 5):
 
     #create 2D gaussian kernel and convert to numpy array
     gaussian_kernel = Gaussian2DKernel(sigma)
-    gaussian_kernel = numpy.asarray(gaussian_kernel, dtype = float)
+    gaussian_kernel = numpy.asarray(gaussian_kernel)
 
     #create block/grid for cuda.jit
     blocks = (32,32)
@@ -746,6 +746,8 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
         C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
         C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
 
+
+    #interpolate flat fields
     C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
 
     C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
@@ -883,8 +885,22 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
     image_RGB : 3D numpy array
         RGB image in the form [X, Y, C]
 
-    mask_val : float:
+    mask_val : float
         Value over which pixels will be masked out of hsv image in value space
+
+    return3D : bool
+        defaults to True. If True a 3D binary mask will be returned, otherwise
+        mask is 2D.
+
+    min_size : int
+        Minimum sized object for the area filter. Objects smaller than this 
+        will be removed.
+
+    Returns
+    -------
+
+    empty_mask : numpy array
+        Binary mask of empty spaces in an image.
     """
 
     hsv = rgb2hsv(image_RGB)
@@ -910,70 +926,3 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
     else:
 
         return empty_mask
-
-def resetImage(corrected_image, original_image, mask_val = 0.1):
-    input_dtype = corrected_image.dtype
-    masked_image = corrected_image*fc.maskEmpty(original_image, mask_val=mask_val)
-    
-    final_image = numpy.where(masked_image[:,:,:] == 0, original_image,masked_image).astype(input_dtype)
-    return final_image
-
-def colorCorrection(image, reference, **kwargs):
-
-    matched_image = ex.match_histogram(image, reference, multichannel = True)
-
-    return matched_image
-
-
-def singleChannel_falseColor(input_image, channelID = 's0', output_dtype = numpy.uint8):
-    """depreciated
-    single channel false coloring based on:
-        Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337
-    """
-    
-    beta_dict = {
-                #nuclear consants
-                's00' : {'K' : 0.017,
-                             'R' : 0.544,
-                             'G' : 1.000,
-                             'B' : 0.050,
-                             'thresh' : 50},
-                             
-                #cytoplasmic constants               
-                's01' : {'K' : 0.008,
-                              'R' : 0.300,
-                              'G' : 1.000,
-                              'B' : 0.860,
-                              'thresh' : 500}}
-                
-    constants = beta_dict[channelID]
-    
-    RGB_image = numpy.zeros((input_image.shape[0],input_image.shape[1],3))
-    
-    #execute background subtraction
-    input_image = preProcess(input_image,channelID)
-    
-    #assign RGB values
-    R = numpy.exp(-constants['K']*constants['R']*input_image)
-    G = numpy.exp(-constants['K']*constants['G']*input_image)
-    B = numpy.exp(-constants['K']*constants['B']*input_image)
-    
-    #rescale to 8bit range
-    RGB_image[:,:,0] = R*255
-    RGB_image[:,:,1] = G*255
-    RGB_image[:,:,2] = B*255
-    
-    return RGB_image.astype(output_dtype)
-
-
-def combineFalseColoredChannels(nuclei, cyto, norm_factor = 255, output_dtype = numpy.uint8):
-    """depreciated
-    Use for combining false colored channels after single channel false color method
-    """
-    
-    assert(cyto.shape == nuclei.shape)
- 
-    RGB_image = numpy.multiply(cyto/norm_factor,nuclei/norm_factor)
-    RGB_image = numpy.multiply(RGB_image,norm_factor)
-    
-    return RGB_image.astype(output_dtype)
