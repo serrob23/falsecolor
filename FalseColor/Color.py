@@ -427,7 +427,7 @@ def getDefaultRGBSettings(use_default = True):
 
     """
     if use_default:
-        nuclei_RGBsettings = [0.17, 0.27, 0.1]
+        nuclei_RGBsettings = [0.17, 0.27, 0.105]
         cyto_RGBsettings = [0.05, 1.0, 0.54]
 
         settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGBsettings}
@@ -686,7 +686,7 @@ def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
-    return flat_field, background/5
+    return flat_field, background
 
 
 def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
