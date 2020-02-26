@@ -4,8 +4,8 @@ with open('requirements.txt','r') as f:
     requires = f.read().splitlines()
 f.close()
 
-setup(name='FalseColor',
-    packages = ['FalseColor'],
+setup(name='falsecolor',
+    packages = ['falsecolor'],
     version='1.1.3.2',
     license = 'GNU Affero General Public License v3.0',
     description='Methods for H&E pseudo coloring of grayscale fluorescent images',
