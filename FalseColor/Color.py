@@ -426,11 +426,10 @@ def getDefaultRGBSettings(use_default = True):
 
 
     """
+
     if use_default:
         nuclei_RGBsettings = [0.17, 0.27, 0.105]
         cyto_RGBsettings = [0.05, 1.0, 0.54]
-
-        settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGBsettings}
 
     else:
 
@@ -438,7 +437,7 @@ def getDefaultRGBSettings(use_default = True):
         nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
         cyto_RGBsettings = [0.05, 1.0, 0.54]
 
-        settings_dict = {'nuclei':nuclei_RGBsettings,'cyto':cyto_RGBsettings}
+    settings_dict = {'nuclei' : nuclei_RGBsettings, 'cyto' : cyto_RGBsettings}
 
     return settings_dict
 
@@ -526,14 +525,13 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
 
     """
     beta_dict = {
-                #constants for nuclear channel
+                #adjustment for nuclear channel
                 'K_nuclei' : 0.08,
 
-                #constants for cytoplasmic channel
+                #adjustment for cytoplasmic channel
                 'K_cyto' : 0.0120}
 
-    #returns dictionary with settings for each channel
-    #keys are: nuclei, cyto
+
     #entries are lists in order of RGB constants
     settings = getDefaultRGBSettings()
 
@@ -634,7 +632,7 @@ def getBackgroundLevels(image, threshold = 50):
 
     background = hi_val/5
 
-    return hi_val,background
+    return hi_val, background
 
 
 def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
@@ -686,6 +684,7 @@ def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
+
     return flat_field, background
 
 
@@ -854,7 +853,6 @@ def segmentNuclei(image, return3D = True, opening = True,
         if opening:
             binary_cyto = morph.binary_closing(binary_cyto, morph.disk(radius))
 
-
         #create 3D array and rearrange shape to match an RGB image
         if return3D:
             binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto, binary_cyto, 
@@ -903,18 +901,20 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
         Binary mask of empty spaces in an image.
     """
 
-    hsv = rgb2hsv(image_RGB)
+    #convert rgb image to hsv space
+    hsv = rgb2hsv(image_RGB) 
 
+    #mask white areas
     binary_mask = (hsv[:,:,1] < mask_val).astype(int)
 
+    #remove small objects and fill holes
     labeled_mask = morph.label(binary_mask)
-
     labeled_mask = morph.remove_small_objects(labeled_mask, min_size =  min_size)
-
     labeled_mask = morph.remove_small_holes(labeled_mask)
 
     empty_mask = (labeled_mask < 1).astype(int)
 
+    #return mask
     if return3D:
         empty_mask_3D = numpy.ones(image_RGB.shape, dtype = int)
 
