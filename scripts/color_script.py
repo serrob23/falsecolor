@@ -23,13 +23,13 @@
 #===============================================================================
 
 Rob Serafin
-11/20/2019
+2/26/2020
 
 """
 
 import os
-import FalseColor.Color as fc
-from FalseColor.SaveThread import saveProcess
+import FalseColor.color as fc
+from FalseColor.savethread import saveProcess
 import numpy 
 from scipy import ndimage
 import copy
