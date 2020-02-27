@@ -718,7 +718,7 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
 
     """
 
-    x0 = numpy.ceil(k/tileSize)
+    x0 = numpy.floor(k/tileSize)
     x1 = numpy.ceil(k/tileSize)
     x = k/tileSize
 
