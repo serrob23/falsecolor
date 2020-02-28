@@ -33,7 +33,7 @@ import skimage.filters as filt
 import skimage.exposure as ex
 import skimage.util as util
 from skimage import color
-import FalseColor.Color as fc
+import FalseColor.color as fc
 import cv2
 import numpy
 import h5py as hp
