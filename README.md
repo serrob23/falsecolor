@@ -31,7 +31,7 @@ Several methods within color.py are setup with GPU acceleration using numba.cuda
 
 #Set color levels for false coloring using background subtraction
 ```python
-import falsecolor.color as fc
+import falsecolor.coloring as fc
 #Using Defaults:
 settings_dict = fc.getDefaultRGBsettings()
 nuclei_RGBsettings = settings_dict['nuclei']
