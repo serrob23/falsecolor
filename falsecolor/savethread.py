@@ -23,7 +23,7 @@
 #===============================================================================
 
 Rob Serafin
-11/20/2019
+2/26/2020
 
 """
 import os
@@ -31,7 +31,6 @@ import tifffile as tif
 import numpy
 from skimage import io
 import time
-from FalseColor import Process
 
 
 def saveProcess(queue):

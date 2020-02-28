@@ -26,11 +26,12 @@ python setup.py install
 ## Usage
 See Examples to get started.
 
-Several methods within Color.py are setup with GPU acceleration using numba.cuda.jit:
+Several methods within color.py are setup with GPU acceleration using numba.cuda.jit:
 (See Example/GPU examples.ipynb)
 
 #Set color levels for false coloring using background subtraction
 ```python
+import falsecolor.color as fc
 #Using Defaults:
 settings_dict = fc.getDefaultRGBsettings()
 nuclei_RGBsettings = settings_dict['nuclei']
