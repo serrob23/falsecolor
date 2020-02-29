@@ -28,7 +28,7 @@ Rob Serafin
 """
 
 import os
-import FalseColor.color as fc
+import FalseColor.coloring as fc
 from FalseColor.savethread import saveProcess
 import numpy 
 from scipy import ndimage
@@ -118,7 +118,7 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    settings_dict = fc.getDefaultRGBSettings(use_default = False)
+    settings_dict = fc.getDefaultRGBSettings()
     nuclei_RGBsettings = settings_dict['nuclei']
     cyto_RGBsettings = settings_dict['cyto']
     print(nuclei_RGBsettings)
