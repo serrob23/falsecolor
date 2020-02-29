@@ -1,6 +1,6 @@
 # FalseColor Python
 
-Python module for H&E pseudo coloring for greyscale fluorescent images of datasets with nuclear and cytoplasmic staining. False coloring methods is based on: [Giacomelli et al.](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0159337)
+A rapid digital staining module designed for translating two-channel fluorescence images (i.e. a nuclear and cytoplasmic stain) to the traditional H&E histopathology color space. Virtual H&E coloring methods based on: [Giacomelli et al.](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0159337)
 
 
 ## Installation
