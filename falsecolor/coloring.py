@@ -485,7 +485,7 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
     #Renormalize to original image levels
     final_image = (image.max())*(equalized_image/equalized_image.max())
 
-    return final_image
+    return final_image.astype(input_dtype)
 
 
 def falseColor(nuclei, cyto, output_dtype=numpy.uint8, 
