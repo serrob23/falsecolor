@@ -118,7 +118,7 @@ def main():
     tileSize = 256
 
     #settings for RGB conversion
-    settings_dict = fc.getDefaultRGBSettings()
+    settings_dict = fc.getColorSettings()
     nuclei_RGBsettings = settings_dict['nuclei']
     cyto_RGBsettings = settings_dict['cyto']
     print(nuclei_RGBsettings)
