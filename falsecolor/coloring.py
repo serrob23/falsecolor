@@ -405,41 +405,38 @@ def gaussianBlur(image, sigma = 5):
 
     return blurred_image
 
-def getDefaultRGBSettings(use_default = True):
+def getColorSettings(key = 'HE'):
 
-    """Returns empirically determined constants for nuclear/cyto channels
+    """Returns color parameters for false coloring data.
 
     Parameters
     ----------
 
-    use_default : bool
-        Defaults to True. Which RGB settings to use, when False will use RGB settings which are
-        empirically derived from histology color analysis. Note: these settings currently only 
-        optimized for flat field method in rapidFalseColor. 
+    key : str
+        Defaults to 'HE'. Which RGB settings to use, when 'HE' will use RGB settings for virtual
+        H&E staining.
+
+        'IHC' will return color settings for virtual IHC/DAB staining.
 
 
     Returns
     -------
-    settings_dict : dict
-        Dictionary with keys 'nuclei', 'cyto' which correspond to lists containing empirically 
-        derived RGB constants for false coloring.
+    color_dict : dict
+        Dictionary with keys ('nuclei', 'cyto') or ('nuclei', 'anti'), which correspond to 
+        lists containing empirically derived RGB constants for false coloring.
 
 
     """
 
-    if use_default:
-        nuclei_RGBsettings = [0.17, 0.27, 0.105]
-        cyto_RGBsettings = [0.05, 1.0, 0.54]
+    color_dict = {
+                    'HE' : {'nuclei' : [0.17, 0.27, 0.105],
+                          'cyto' : [0.05, 1.0, 0.54]},
 
-    else:
+                    'IHC' : {'nuclei' : [0.65, 0.45, 0.15],
+                             'anti' : [ 0.4, 0.7, 0.9]}
+                }
 
-        k_nuclei = 0.85
-        nuclei_RGBsettings = [0.25*k_nuclei, 0.37*k_nuclei, 0.1*k_nuclei]
-        cyto_RGBsettings = [0.05, 1.0, 0.54]
-
-    settings_dict = {'nuclei' : nuclei_RGBsettings, 'cyto' : cyto_RGBsettings}
-
-    return settings_dict
+    return color_dict[key]
 
 
 def applyCLAHE(image, clahe = None, tileGridSize = (8,8), 
