@@ -486,7 +486,12 @@ def applyCLAHE(image, clahe = None, tileGridSize = (8,8),
 
 
 def falseColor(nuclei, cyto, output_dtype=numpy.uint8, 
-                    nuc_bg_threshold = 50, cyto_bg_threshold = 50, nuc_normfactor = None, cyto_normfactor=None):
+                    nuc_bg_threshold = 50, 
+                    cyto_bg_threshold = 50, 
+                    nuc_normfactor = None, 
+                    cyto_normfactor=None,
+                    color_key = 'HE',
+                    color_settings = None):
     """
     Two channel virtual H&E coloring using Beer's law method based on:
     Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
@@ -500,25 +505,28 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
     cyto : 2D numpy array
         Image of cytoplasm stain (eosin equivalent) for the Virtual H&E transformation
 
-    channelIDs = list
-        keys to grab settings from beta_dict
-        defaults: s00 : nuclei
-                  s01 : cyto
-
     output_dtype : numpy.uint8
         output datatype for final RGB image
 
-    nuc_bg_threshold = int
+    nuc_bg_threshold : int
         defaults to 50, threshold level for calculating nuclear background
 
-    cyto_bg_threshold = int
+    cyto_bg_threshold : int
         defaults to 50, threshold level for calculating cytoplasmic background
+
+    color_key : str
+        defaults to HE, color settings key for getColorSettings
+
+    color_settings : None or dict
+        defaults to None. Color settings for false coloring, if None color settings will be
+        assigned by getColorSettings() with the color_key provided. If different color settings
+        are desired the keys to dictionary should be 'nuclei' and 'cyto'
 
 
     Returns
     -------
     RGB_image : numpy array
-        Combined false colored image in the standard RGB format [X, Y, C]
+        Combined virtual H&E image in the standard RGB format [X, Y, C]
 
     """
     beta_dict = {
@@ -530,12 +538,14 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
 
 
     #entries are lists in order of RGB constants
-    settings = getDefaultRGBSettings()
+    if color_settings is None:
+        color_settings = getColorSettings(key = color_key)
 
-    constants_nuclei = settings['nuclei']
+
+    constants_nuclei = color_settings['nuclei']
     k_nuclei = beta_dict['K_nuclei']
 
-    constants_cyto = settings['cyto']
+    constants_cyto = color_settings['cyto']
     k_cytoplasm= beta_dict['K_cyto']
     
     #execute background subtraction
@@ -547,6 +557,7 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
     cyto_threshold = getBackgroundLevels(cyto, cyto_bg_threshold)[1]
     cyto = preProcess(cyto, threshold = cyto_threshold, normfactor = cyto_normfactor)
 
+    #create array to store RGB image
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
 
     #iterate throough RGB constants and execute image multiplication
