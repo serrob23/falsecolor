@@ -23,7 +23,7 @@
 #===============================================================================
 
 Rob Serafin
-2/26/2020
+3/25/2020
 
 """
 
@@ -404,6 +404,7 @@ def gaussianBlur(image, sigma = 5):
     Convolve2d[grid,blocks](image, gaussian_kernel, blurred_image)
 
     return blurred_image
+
 
 def getColorSettings(key = 'HE'):
 
