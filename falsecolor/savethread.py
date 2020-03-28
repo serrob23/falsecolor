@@ -40,7 +40,8 @@ def saveProcess(queue):
 
     queue : multiprocessing queue
 
-        message : result of queue.get(), has the following properties in this order:
+        message : result of queue.get(), has the following properties in 
+        this order:
 
                 path : str or pathlike
                     top level storage directory for data
