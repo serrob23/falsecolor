@@ -39,7 +39,6 @@ import cv2
 import numpy
 from numba import cuda, njit
 import math
-from astropy.convolution import Gaussian2DKernel
 
 
 @cuda.jit #direct GPU compiling
@@ -360,50 +359,6 @@ def sharpenImage(input_image,alpha = 0.5):
     final_image = input_image + 0.5*numpy.sqrt(voutput**2 + houtput**2)
     
     return final_image
-
-
-def gaussianBlur(image, sigma = 5):
-    """
-    Cuda accelerated gaussian blurring using Convolve2D.
-
-    Parameters
-    ----------
-
-    image : numpy array
-        Image for blurring
-
-    sigma : int
-        Standard deviation of 2D gaussian kernel
-
-
-    Returns
-    -------
-
-    blurred_image : numpy array
-        image convolved with gaussian kernel
-
-    """
-
-    #ensure image dtype is float
-    if image.dtype != float:
-        image = image.astype(float)
-
-    #create 2D gaussian kernel and convert to numpy array
-    gaussian_kernel = Gaussian2DKernel(sigma)
-    gaussian_kernel = numpy.asarray(gaussian_kernel)
-
-    #create block/grid for cuda.jit
-    blocks = (32,32)
-    grid = (image.shape[0]//blocks[0] + 1, image.shape[1]//blocks[1] + 1)
-
-    #create output array
-    blurred_image = numpy.zeros(image.shape)
-
-    #run convolution
-    image = numpy.ascontiguousarray(image)
-    Convolve2d[grid,blocks](image, gaussian_kernel, blurred_image)
-
-    return blurred_image
 
 
 def getColorSettings(key = 'HE'):
