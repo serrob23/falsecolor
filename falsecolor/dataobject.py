@@ -28,7 +28,7 @@ Rob Serafin
 """
 
 import os
-import tifffile as tf
+import tifffile as tif
 import numpy
 from pathos.multiprocessing import ProcessingPool
 import h5py as hp
@@ -90,7 +90,7 @@ class DataObject(object):
         images = []
 
         for item in file_list:
-            images.append(tf.imread(item))
+            images.append(tif.imread(item))
 
         return np.asarray(images)
             
