@@ -28,7 +28,7 @@ Rob Serafin
 """
 
 import os
-import tifffile as tif
+from skimage.io import imread
 import numpy
 from pathos.multiprocessing import ProcessingPool
 import h5py as hp
@@ -70,15 +70,15 @@ class DataObject(object):
         self.tissue = tissue_type
                 
     
-    def loadTifImages(self, file_list):
+    def loadImages(self, file_list):
         """
-        Loads list of tif images and returns as numpy array
+        Loads list of images and returns as a 3D numpy array
 
         Parameters
         ----------
 
         file_list : list 
-            List of tif filepaths to be read into memory
+            List of filepaths to be read into memory
 
         Returns
         -------
@@ -86,11 +86,12 @@ class DataObject(object):
         images : numpy array
             Image data read into memory
         """          
+        
         file_list = sorted(file_list)
         images = []
 
         for item in file_list:
-            images.append(tif.imread(item))
+            images.append(imread(item))
 
         return np.asarray(images)
             
