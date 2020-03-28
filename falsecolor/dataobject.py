@@ -32,7 +32,7 @@ import tifffile as tf
 import numpy
 from pathos.multiprocessing import ProcessingPool
 import h5py as hp
-import FalseColor.color as fc
+import FalseColor.coloring as fc
 
 class DataObject(object):
     def __init__(self, directory, imageSet = None,
