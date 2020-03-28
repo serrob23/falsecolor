@@ -42,11 +42,12 @@ import math
 
 
 @cuda.jit #direct GPU compiling
-def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
-                        cyto_settings, k_nuclei, k_cyto):
+def rapid_getRGBframe(nuclei, cyto, output, nuc_settings, cyto_settings, 
+                        k_nuclei, k_cyto):
     #TODO: implement array base normalization
     """
-    GPU based exponential false coloring operation. Used by rapidFalseColor()
+    GPU based exponential false coloring operation. Used by 
+    rapidFalseColor().
 
     Parameters
     ----------
@@ -65,23 +66,26 @@ def rapid_getRGBframe(nuclei, cyto, output, nuc_settings,
         RGB constant for cyto channel
 
     k_nuclei : float
-        Additional multiplicative constant for nuclear channel. Eventually will get removed once 
-        flat fielding is in place for all pseudo coloring methods.
+        Additional multiplicative constant for nuclear channel. 
+        Eventually will get removed once flat fielding is in place for 
+        all pseudo coloring methods.
 
     k_cyto: float
-        Additional multiplicative constant for cytoplasmic channel. Eventually will get removed once 
-        flat fielding is in place for all pseudo coloring methods.        
+        Additional multiplicative constant for cytoplasmic channel. 
+        Eventually will get removed once flat fielding is in place for 
+        all pseudo coloring methods.        
     """
     row,col = cuda.grid(2)
 
     #iterate through image and assign pixel values
     if row < output.shape[0] and col < output.shape[1]:
-        tmp = nuclei[row,col]*nuc_settings*k_nuclei + cyto[row,col]*cyto_settings*k_cyto
+        tmp = nuclei[row,col]*nuc_settings*k_nuclei + \
+                                             cyto[row,col]*cyto_settings*k_cyto
         output[row,col] = 255*math.exp(-1*tmp)
 
 
 @cuda.jit
-def rapidFieldDivision(image,flat_field,output):
+def rapidFieldDivision(image, flat_field, output):
     """
     Used for rapidFalseColoring() when flat field has been calculated
 
@@ -103,9 +107,13 @@ def rapidFieldDivision(image,flat_field,output):
         output[row,col] = tmp
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
-                   TPB = (32,32), nuc_normfactor = 8500, cyto_normfactor = 3000,
-                   run_FlatField_nuc = False, run_FlatField_cyto = False, nuc_bg_threshold = 50,
-                   cyto_bg_threshold = 50):
+                    TPB = (32,32), 
+                    nuc_normfactor = 8500, 
+                    cyto_normfactor = 3000,
+                    run_FlatField_nuc = False, 
+                    run_FlatField_cyto = False, 
+                    nuc_bg_threshold = 50,
+                    cyto_bg_threshold = 50):
     """
     Parameters
     ----------
@@ -117,18 +125,22 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         Cytoplasm channel image.
         
     nuc_settings : list
-        Settings of RGB constants for nuclear channel. Should be in order R, G, B.
+        Settings of RGB constants for nuclear channel. Should be in 
+        order R, G, B.
     
     cyto_settings : list
-        Settings of RGB constants for cytoplasm channel. Should be in order R, G, B.
+        Settings of RGB constants for cytoplasm channel. Should be in 
+        order R, G, B.
 
     nuc_normfactor : int or array
-        Defaults to empirically determined constant to reduce saturation. Otherwise it should be a 
-        numpy array representing the true flat field image.
+        Defaults to empirically determined constant to reduce 
+        saturation. Otherwise it should be a numpy array representing 
+        the true flat field image.
 
     cyto_normfactor : int or array
-        Defaults to empirically determined constant to reduce saturation. Otherwise it should be a 
-        numpy array representing the true flat field image.
+        Defaults to empirically determined constant to reduce 
+        saturation. Otherwise it should be a numpy array representing 
+        the true flat field image.
         
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads) used for GPU threads.
@@ -137,17 +149,20 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         defaults to False, boolean to apply flatfield
 
     nuc_bg_threshold = int
-        defaults to 50, threshold level for calculating nuclear background
+        defaults to 50, threshold level for calculating nuclear 
+        background.
 
     cyto_bg_threshold = int
-        defaults to 50, threshold level for calculating cytoplasmic background
+        defaults to 50, threshold level for calculating cytoplasmic 
+        background.
 
 
 
     Returns
     -------
     RGB_image : 3D numpy array
-        Combined false colored image in the standard RGB format [X, Y, C]
+        Combined false colored image in the standard RGB format 
+        [X, Y, C].
 
     """
 
@@ -155,7 +170,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     nuclei = nuclei.astype(float)
     cyto = cyto.astype(float)
 
-    #set mulciplicative constants, changes on flat fielding vs background subtraction
+    #set mulciplicative constants
     k_nuclei = 1.0
     k_cyto = 1.0
 
@@ -175,12 +190,16 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     if run_FlatField_nuc:
         nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         nuc_norm_mem = cuda.to_device(nuc_normfactor)
-        rapidFieldDivision[blockspergrid,TPB](nuc_global_mem,nuc_norm_mem,pre_nuc_output)
+
+        rapidFieldDivision[blockspergrid,TPB](nuc_global_mem, nuc_norm_mem, 
+                                                                pre_nuc_output)
 
     #otherwise use standard background subtraction
     else:
         k_nuclei = 0.08
-        nuc_background = getBackgroundLevels(nuclei, threshold = nuc_bg_threshold)[1]
+        nuc_background = getBackgroundLevels(nuclei, 
+                                            threshold = nuc_bg_threshold)[1]
+
         rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
                                                 nuc_normfactor,pre_nuc_output)
     
@@ -195,29 +214,37 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     if run_FlatField_cyto:
         cyto_normfactor = numpy.ascontiguousarray(cyto_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
-        rapidFieldDivision[blockspergrid,TPB](cyto_global_mem,cyto_norm_mem,pre_cyto_output)
+        rapidFieldDivision[blockspergrid,TPB](cyto_global_mem, 
+                                                cyto_norm_mem, pre_cyto_output)
 
     # otherwise use standard background subtraction
     else:
         k_cyto = 0.012
-        cyto_background = getBackgroundLevels(cyto, threshold = cyto_bg_threshold)[1]
-        rapid_preProcess[blockspergrid,TPB](cyto_global_mem,cyto_background,
-                                                cyto_normfactor,pre_cyto_output)
+        cyto_background = getBackgroundLevels(cyto, 
+                                            threshold = cyto_bg_threshold)[1]
+        rapid_preProcess[blockspergrid,TPB](cyto_global_mem, 
+                                                cyto_background,
+                                                cyto_normfactor, 
+                                                pre_cyto_output)
     
     #create output array to iterate through
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]), dtype = numpy.uint8) 
+    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]), 
+                                                        dtype = numpy.uint8) 
 
-    #iterate through output array and assign values based on RGB settings
+    #iterate through output and assign values based on RGB settings
     for i,z in enumerate(RGB_image): #TODO: speed this up on GPU
 
-        #allocate memory on GPU with background subtracted images and final output
+        #allocate memory on GPU: background subtracted images and final output
         output_global = cuda.to_device(numpy.zeros(z.shape)) 
         nuclei_global = cuda.to_device(pre_nuc_output)
         cyto_global = cuda.to_device(pre_cyto_output)
 
         #get 8bit frame
-        rapid_getRGBframe[blockspergrid,TPB](nuclei_global,cyto_global,output_global,
-                                                nuc_settings[i],cyto_settings[i],
+        rapid_getRGBframe[blockspergrid,TPB](nuclei_global, 
+                                                cyto_global, 
+                                                output_global,
+                                                nuc_settings[i], 
+                                                cyto_settings[i],
                                                 k_nuclei, k_cyto)
         
         RGB_image[i] = output_global.copy_to_host()
@@ -228,7 +255,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
 
 @cuda.jit #direct GPU compiling
-def rapid_preProcess(image,background,norm_factor,output):
+def rapid_preProcess(image, background, norm_factor, output):
     """
     Background subtraction optimized for GPU, used by rapidFalseColor.
 
@@ -242,16 +269,16 @@ def rapid_preProcess(image,background,norm_factor,output):
         Constant for subtraction.
 
     norm_factor : int
-        Empirically determaned constant for normalization after subtraction. Helps prevent 
-    saturation.
+        Empirically determaned constant for normalization after 
+        subtraction. Helps prevent saturation.
 
     output : 2d numpy array
         Numpy array of zeros for GPU to assign values to.
 
     Returns
     -------
-    This method requires an output array as an argument, the results of the compuation are stored 
-    there.
+    This method requires an output array as an argument, 
+    the results of the compuation are stored there.
     """
 
     #create iterator for gpu  
@@ -273,210 +300,58 @@ def rapid_preProcess(image,background,norm_factor,output):
             output[row,col] = tmp
 
 
-@cuda.jit
-def Convolve2d(image,kernel,output):
-    """
-    GPU based 2d convolution method.
-
-    Parameters
-    ----------
-
-    image : 2D numpy array
-        Image for processing, written to GPU.
-
-    kernel : 2D numpy array
-        kernel to convolve image with, written to GPU
-
-    output : 2D numpy array
-        Output array, storing result of convolution, written to GPU.
-
-    Returns
-    -------
-    This method requires an output array as an argument, the results of the compuation are stored 
-    there.
-    """
-
-    #create iterator
-    row,col = cuda.grid(2)
-    
-    image_rows,image_cols = image.shape
-    
-    delta_r = kernel.shape[0]//2
-    delta_c = kernel.shape[1]//2
-    
-    #ignore rows/cols outside image
-    if (row >= image_rows) or (col >= image_cols):
-        return
-    
-    tmp = 0
-    for i in range(kernel.shape[0]):
-        for j in range(kernel.shape[1]):
-            #result should be sum of kernel*image as kernel is varied
-            row_i = row - i + delta_r
-            col_j = col - j + delta_c
-            if (row_i>=0) and (row_i < image_rows):
-                if (col_j>=0) and (col_j < image_cols):
-                    tmp += kernel[i,j]*image[row_i,col_j]
-                    
-    output[row,col] = tmp 
-
-
-def sharpenImage(input_image,alpha = 0.5):
-    """
-    Image sharpening algorithm to amplify edges.
-
-    Parameters
-    ----------
-
-    input_image : 2D numpy array
-        Image to run sharpening algorithm on
-
-    alpha : float or int
-        Multiplicative constant for final result.
-
-    Returns
-    --------
-
-    final_image : 2D numpy array
-        The sum of the input image and the resulting convolutions
-    """
-    #create kernels to amplify edges
-    hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
-    vkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
-
-    #set grid/threads for GPU
-    blocks = (32,32)
-    grid = (input_image.shape[0]//blocks[0] + 1, input_image.shape[1]//blocks[1] + 1)
-
-    #run convolution
-    input_image = numpy.ascontiguousarray(input_image)
-    voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
-    houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
-    Convolve2d[grid,blocks](input_image,vkernel,voutput)
-    Convolve2d[grid,blocks](input_image,hkernel,houtput)
-
-    #calculate final result
-    final_image = input_image + 0.5*numpy.sqrt(voutput**2 + houtput**2)
-    
-    return final_image
-
-
-def getColorSettings(key = 'HE'):
-
-    """Returns color parameters for false coloring data.
-
-    Parameters
-    ----------
-
-    key : str
-        Defaults to 'HE'. Which RGB settings to use, when 'HE' will use RGB settings for virtual
-        H&E staining.
-
-        'IHC' will return color settings for virtual IHC/DAB staining.
-
-
-    Returns
-    -------
-    color_dict : dict
-        Dictionary with keys ('nuclei', 'cyto') or ('nuclei', 'anti'), which correspond to 
-        lists containing empirically derived RGB constants for false coloring.
-
-
-    """
-
-    color_dict = {
-                    'HE' : {'nuclei' : [0.17, 0.27, 0.105],
-                          'cyto' : [0.05, 1.0, 0.54]},
-
-                    'IHC' : {'nuclei' : [0.65, 0.45, 0.15],
-                             'anti' : [ 0.4, 0.7, 0.9]}
-                }
-
-    return color_dict[key]
-
-
-def applyCLAHE(image, clahe = None, tileGridSize = (8,8), 
-                                    input_dtype = numpy.uint16,
-                                    clipLimit = 0.048):
-    """
-    Applies Contrast Limited Adaptive Histogram Equalization algorithm from OpenCV. 
-
-    Parameters 
-    ----------
-
-    image : 2D numpy array
-        Image for histogram equalization
-
-    clahe : None or cv2.CLAHE object
-        CV2 object to use for equalization
-
-    tileGridSize : tuple
-        Tuple of ints representing the windowsize for CLAHE, default is (32,32)
-
-    input_dtype : numpy dtype
-        Dtype to use for CLAHE object, defaults to numpy.uint16, cv2 CLAHE is compatible with either
-        numpy.uint8 or numpy.uint16
-
-    Returns
-    -------
-
-    equalized_image : 2D numpy array
-        Image with equalized historgram.
-
-    """
-
-    if clahe is None:
-        #create clahe object
-        clahe = cv2.createCLAHE(tileGridSize = tileGridSize, clipLimit = clipLimit)
-
-    #ensure image is of uint dtype
-    image = image.astype(input_dtype)
-
-    #apply CLAHE
-    equalized_image = clahe.apply(image)
-
-    #Renormalize to original image levels
-    final_image = (image.max())*(equalized_image/equalized_image.max())
-
-    return final_image.astype(input_dtype)
-
-
-def falseColor(nuclei, cyto, output_dtype=numpy.uint8, 
+def falseColor(nuclei, cyto, 
+                    output_dtype = numpy.uint8, 
                     nuc_bg_threshold = 50, 
                     cyto_bg_threshold = 50, 
                     nuc_normfactor = None, 
-                    cyto_normfactor=None,
+                    cyto_normfactor = None,
                     color_key = 'HE',
                     color_settings = None):
     """
-    Two channel virtual H&E coloring using Beer's law method based on:
-    Giacomelli et al., PLOS one 2016 doi:10.1371/journal.pone.0159337.
+    CPU-based two channel virtual H&E coloring using Beer's law method.
 
 
     Parameters
     ----------
     nuclei : 2D numpy array
-       Image of nuclear stain (hematoxylin equivalent) for the Virtual H&E transformation.
+       Image of nuclear stain (hematoxylin equivalent) for false 
+       coloring.
 
     cyto : 2D numpy array
-        Image of cytoplasm stain (eosin equivalent) for the Virtual H&E transformation
+        Image of cytoplasm stain (eosin equivalent) or antibody for 
+        false coloring.
 
     output_dtype : numpy.uint8
         output datatype for final RGB image
 
     nuc_bg_threshold : int
-        defaults to 50, threshold level for calculating nuclear background
+        defaults to 50, threshold level for calculating nuclear 
+        background.
 
     cyto_bg_threshold : int
-        defaults to 50, threshold level for calculating cytoplasmic background
+        defaults to 50, threshold level for calculating cytoplasmic 
+        background.
+
+    nuc_normfactor : None or int
+        defaults to None, color saturation level for nuclear channel 
+        used in preProcess. Larger values will result in colors which 
+        are less vibrant.
+
+    cyto_normfactor : None or int
+        defaults to None, color saturation level for cytoplasmic or 
+        antibody channel used in preProcess. Larger values will result 
+        in colors which are less vibrant.
+
 
     color_key : str
         defaults to HE, color settings key for getColorSettings
 
     color_settings : None or dict
-        defaults to None. Color settings for false coloring, if None color settings will be
-        assigned by getColorSettings() with the color_key provided. If different color settings
-        are desired the keys to dictionary should be 'nuclei' and 'cyto'
+        defaults to None. Color settings for false coloring, if None 
+        color settings will be assigned by getColorSettings() with the 
+        color_key provided. If different color settings are desired the 
+        keys to the dictionary should be 'nuclei' and 'cyto'.
 
 
     Returns
@@ -507,19 +382,22 @@ def falseColor(nuclei, cyto, output_dtype=numpy.uint8,
     #execute background subtraction
     nuclei = nuclei.astype(float)
     nuc_threshold = getBackgroundLevels(nuclei, nuc_bg_threshold)[1]
-    nuclei = preProcess(nuclei, threshold = nuc_threshold, normfactor = nuc_normfactor)
+    nuclei = preProcess(nuclei, threshold = nuc_threshold, 
+                                normfactor = nuc_normfactor)
 
     cyto = cyto.astype(float)
     cyto_threshold = getBackgroundLevels(cyto, cyto_bg_threshold)[1]
-    cyto = preProcess(cyto, threshold = cyto_threshold, normfactor = cyto_normfactor)
+    cyto = preProcess(cyto, threshold = cyto_threshold, 
+                            normfactor = cyto_normfactor)
 
     #create array to store RGB image
     RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
 
     #iterate throough RGB constants and execute image multiplication
     for i in range(len(RGB_image)):
-        RGB_image[i] = 255*numpy.multiply(numpy.exp(-constants_cyto[i]*k_cytoplasm*cyto),
-                                        numpy.exp(-constants_nuclei[i]*k_nuclei*nuclei))
+        tmp_c = constants_cyto[i]*k_cytoplasm*cyto
+        tmp_n = constants_nuclei[i]*k_nuclei*nuclei
+        RGB_image[i] = 255*numpy.multiply(numpy.exp(-tmp_c), numpy.exp(-tmp_n))
 
     #reshape to [X,Y,C]
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
@@ -565,10 +443,184 @@ def preProcess(image, threshold = 50, normfactor = None):
     return processed_image
 
 
+@cuda.jit
+def Convolve2d(image, kernel, output):
+    """
+    GPU based 2d convolution method.
+
+    Parameters
+    ----------
+
+    image : 2D numpy array
+        Image for processing, written to GPU.
+
+    kernel : 2D numpy array
+        kernel to convolve image with, written to GPU
+
+    output : 2D numpy array
+        Output array, storing result of convolution, written to GPU.
+
+    Returns
+    -------
+    This method requires an output array as an argument, the results 
+    of the compuation are stored there.
+    """
+
+    #create iterator
+    row,col = cuda.grid(2)
+    
+    image_rows,image_cols = image.shape
+    
+    delta_r = kernel.shape[0]//2
+    delta_c = kernel.shape[1]//2
+    
+    #ignore rows/cols outside image
+    if (row >= image_rows) or (col >= image_cols):
+        return
+    
+    tmp = 0
+    for i in range(kernel.shape[0]):
+        for j in range(kernel.shape[1]):
+            #result should be sum of kernel*image as kernel is varied
+            row_i = row - i + delta_r
+            col_j = col - j + delta_c
+            if (row_i>=0) and (row_i < image_rows):
+                if (col_j>=0) and (col_j < image_cols):
+                    tmp += kernel[i,j]*image[row_i,col_j]
+                    
+    output[row,col] = tmp 
+
+
+def sharpenImage(input_image, alpha = 0.5):
+    """
+    Image sharpening algorithm to amplify edges.
+
+    Parameters
+    ----------
+
+    input_image : 2D numpy array
+        Image to run sharpening algorithm on
+
+    alpha : float or int
+        Multiplicative constant for final result.
+
+    Returns
+    --------
+
+    final_image : 2D numpy array
+        The sum of the input image and the resulting convolutions
+    """
+    #create kernels to amplify edges
+    hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
+    vkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
+
+    #set grid/threads for GPU
+    blocks = (32,32)
+    grid = (input_image.shape[0]//blocks[0] + 1, 
+                                input_image.shape[1]//blocks[1] + 1)
+
+    #run convolution
+    input_image = numpy.ascontiguousarray(input_image)
+    voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
+    houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
+    Convolve2d[grid,blocks](input_image,vkernel,voutput)
+    Convolve2d[grid,blocks](input_image,hkernel,houtput)
+
+    #calculate final result
+    final_image = input_image + 0.5*numpy.sqrt(voutput**2 + houtput**2)
+    
+    return final_image
+
+
+def getColorSettings(key = 'HE'):
+
+    """Returns color parameters for false coloring data.
+
+    Parameters
+    ----------
+
+    key : str
+        Defaults to 'HE'. Which RGB settings to use, when 'HE' will use 
+        RGB settings for virtual H&E staining.
+
+        'IHC' will return color settings for virtual IHC/DAB staining.
+
+
+    Returns
+    -------
+    color_dict : dict
+        Dictionary with keys ('nuclei', 'cyto') or ('nuclei', 'anti'), 
+        which correspond to lists containing empirically derived 
+        RGB constants for false coloring.
+
+
+    """
+
+    color_dict = {
+                    'HE' : {'nuclei' : [0.17, 0.27, 0.105],
+                          'cyto' : [0.05, 1.0, 0.54]},
+
+                    'IHC' : {'nuclei' : [0.65, 0.45, 0.15],
+                             'anti' : [ 0.4, 0.7, 0.9]}
+                }
+
+    return color_dict[key]
+
+
+def applyCLAHE(image, clahe = None, 
+                    tileGridSize = (8,8), 
+                    input_dtype = numpy.uint16,
+                    clipLimit = 0.048):
+    """
+    Applies Contrast Limited Adaptive Histogram Equalization algorithm 
+    from OpenCV. 
+
+    Parameters 
+    ----------
+
+    image : 2D numpy array
+        Image for histogram equalization
+
+    clahe : None or cv2.CLAHE object
+        CV2 object to use for equalization
+
+    tileGridSize : tuple
+        Tuple of ints representing the windowsize for CLAHE, 
+        default is (32,32)
+
+    input_dtype : numpy dtype
+        Dtype to use for CLAHE object, defaults to numpy.uint16,
+        cv2 CLAHE is compatible with either numpy.uint8 or numpy.uint16
+
+    Returns
+    -------
+
+    equalized_image : 2D numpy array
+        Image with equalized historgram.
+
+    """
+
+    if clahe is None:
+        #create clahe object
+        clahe = cv2.createCLAHE(tileGridSize = tileGridSize, 
+                                                    clipLimit = clipLimit)
+
+    #ensure image is of uint dtype
+    image = image.astype(input_dtype)
+
+    #apply CLAHE
+    equalized_image = clahe.apply(image)
+
+    #Renormalize to original image levels
+    final_image = (image.max())*(equalized_image/equalized_image.max())
+
+    return final_image.astype(input_dtype)
+
+
 def getBackgroundLevels(image, threshold = 50):
     """
-    Calculate foreground and background values based on image statistics, background is currently
-    set to be 20% of foreground
+    Calculate foreground and background values based on image 
+    statistics, background is currently set to be 20% of foreground.
 
     Parameters
     ----------
@@ -599,10 +651,11 @@ def getBackgroundLevels(image, threshold = 50):
     return hi_val, background
 
 
-def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
+def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
 
     """
-    Returns downsampled flat field of image data and calculated background levels
+    Returns downsampled flat field of image data and calculated 
+    background levels.
 
     Parameters
     ----------
@@ -630,17 +683,25 @@ def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
     stacks_max = int(numpy.ceil(image.shape[1]/blockSize)*blockSize)
 
 
-    rows = numpy.arange(0, rows_max+int(tileSize/blockSize), int(tileSize/blockSize))
-    cols = numpy.arange(0, cols_max+int(tileSize/blockSize), int(tileSize/blockSize))
-    stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), int(tileSize/blockSize))
+    rows = numpy.arange(0, rows_max+int(tileSize/blockSize), 
+                                        int(tileSize/blockSize))
+
+    cols = numpy.arange(0, cols_max+int(tileSize/blockSize), 
+                                        int(tileSize/blockSize))
+
+    stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), 
+                                        int(tileSize/blockSize))
     
-    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, len(cols)-1), dtype = float)
+    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, 
+                                            len(cols)-1), dtype = float)
     
     for i in range(1,len(rows)):
         for j in range(1,len(stacks)):
             for k in range(1,len(cols)):
 
-                ROI_0 = image[rows[i-1]:rows[i], stacks[j-1]:stacks[j], cols[k-1]:cols[k]]
+                ROI_0 = image[rows[i-1]:rows[i], 
+                                stacks[j-1]:stacks[j], 
+                                cols[k-1]:cols[k]]
                 
                 fkg_ind = numpy.where(ROI_0 > background)
                 if fkg_ind[0].size==0:
@@ -654,8 +715,8 @@ def getFlatField(image,tileSize=256,blockSize = 16, bg_threshold = 50):
 
 def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
     """
-    Method for resizing downsampled data to be the same size as full res data. Used for 
-    interpolating flat field images.
+    Method for resizing downsampled data to be the same size as full 
+    resolution data. Used for interpolating flat field images.
 
     Parameters
     ----------
@@ -711,23 +772,26 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
 
 
     #interpolate flat fields
-    C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, mode = 'nearest')
+    C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, 
+                                                        mode = 'nearest')
 
-    C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, mode = 'nearest')
+    C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, 
+                                                        mode = 'nearest')
 
     return C_nuc, C_cyt
 
 
 def deconvolveColors(image):
     """
-    Separates H&E channels from an RGB image using skimage.color.rgb2hed method
+    Separates H&E channels from an RGB image using skimage.color.rgb2hed 
+    method.
 
     Parameters
     ----------
 
     image : 3D numpy array
-        RGB image in the format [X, Y, C] where the hematoxylin and eosin channels 
-        are to be separted.
+        RGB image in the format [X, Y, C] where the hematoxylin and 
+        eosin channels are to be separted.
 
     Returns
     -------
@@ -750,12 +814,15 @@ def deconvolveColors(image):
     return hematoxylin, eosin
 
 
-def segmentNuclei(image, return3D = True, opening = True, 
-                         radius = 3, min_size = 64,
-                         return_cyto = False):
+def segmentNuclei(image, return3D = True, 
+                    opening = True, 
+                    radius = 3, 
+                    min_size = 64,
+                    return_cyto = False):
     """
     
-    Grabs binary mask of nuclei from H&E image using color deconvolution. 
+    Grabs binary mask of nuclei from H&E RGB image using color 
+    deconvolution. 
 
     Parameters
     ----------
@@ -767,7 +834,8 @@ def segmentNuclei(image, return3D = True, opening = True,
         Defaults to False, return 3D version of mask
 
     return_cyto : bool
-        Defaults to False, will return a binary mask for cytoplasm from color deconvolved RGB image
+        Defaults to False, will return a binary mask for cytoplasm from 
+        color deconvolved RGB image.
 
     Returns
     -------
@@ -789,11 +857,13 @@ def segmentNuclei(image, return3D = True, opening = True,
 
     #remove small objects
     labeled_mask = morph.label(binarized_nuclei)
-    shape_filtered_mask = morph.remove_small_objects(labeled_mask, min_size = min_size)
+    shape_filtered_mask = morph.remove_small_objects(labeled_mask, 
+                                                        min_size = min_size)
 
     #binary opening to separate objects
     if opening:
-        shape_filtered_mask = morph.binary_opening(shape_filtered_mask, morph.disk(radius))
+        shape_filtered_mask = morph.binary_opening(shape_filtered_mask, 
+                                                        morph.disk(radius))
 
     #remove labels from nuclear mask
     binary_mask = (shape_filtered_mask > 0)
@@ -819,14 +889,16 @@ def segmentNuclei(image, return3D = True, opening = True,
 
         #create 3D array and rearrange shape to match an RGB image
         if return3D:
-            binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto, binary_cyto, 
-                                                                    binary_cyto]), 0, -1)
+            binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto, 
+                                                        binary_cyto, 
+                                                        binary_cyto]), 0, -1)
 
     #create 3D array and rearrange shape to match an RGB image
     if return3D:
         binary_mask = numpy.moveaxis(numpy.asarray([shape_filtered_mask, 
                                                     shape_filtered_mask, 
-                                                    shape_filtered_mask]), 0, -1)
+                                                    shape_filtered_mask]), 
+                                                    0, -1)
 
     #return mask
     if return_cyto:
@@ -836,7 +908,10 @@ def segmentNuclei(image, return3D = True, opening = True,
         return binary_mask.astype(int)
 
 
-def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
+def maskEmpty(image_RGB,
+                    mask_val = 0.05, 
+                    return3D = True, 
+                    min_size = 150):
 
     """
     Method to remove white areas from RGB histology image.
@@ -845,18 +920,19 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
     ----------
 
     image_RGB : 3D numpy array
-        RGB image in the form [X, Y, C]
+        RGB image in the form [X, Y, C].
 
     mask_val : float
-        Value over which pixels will be masked out of hsv image in value space
+        Value over which pixels will be masked out of hsv image in 
+        value space.
 
     return3D : bool
-        defaults to True. If True a 3D binary mask will be returned, otherwise
-        mask is 2D.
+        defaults to True. If True a 3D binary mask will be returned, 
+        otherwise mask is 2D.
 
     min_size : int
-        Minimum sized object for the area filter. Objects smaller than this 
-        will be removed.
+        Minimum sized object for the area filter. Objects smaller than 
+        this threshold will be removed.
 
     Returns
     -------
@@ -873,7 +949,10 @@ def maskEmpty(image_RGB, mask_val = 0.05, return3D = True, min_size = 150):
 
     #remove small objects and fill holes
     labeled_mask = morph.label(binary_mask)
-    labeled_mask = morph.remove_small_objects(labeled_mask, min_size =  min_size)
+
+    labeled_mask = morph.remove_small_objects(labeled_mask, 
+                                                min_size =  min_size)
+
     labeled_mask = morph.remove_small_holes(labeled_mask)
 
     empty_mask = (labeled_mask < 1).astype(int)
