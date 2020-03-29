@@ -106,6 +106,7 @@ def rapidFieldDivision(image, flat_field, output):
         tmp = image[row,col]/flat_field[row,col]
         output[row,col] = tmp
 
+
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                     TPB = (32,32), 
                     nuc_normfactor = 8500, 
