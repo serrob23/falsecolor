@@ -13,7 +13,7 @@ conda install cudatoolkit
 FalseColor Python can be installed using pip:
 
 ```bash
-pip install falsecolor
+pip install FalseColor
 ```
 
 Or by running setup.py install while in the working directory.
