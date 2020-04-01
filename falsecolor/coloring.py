@@ -723,14 +723,11 @@ def interpolateDS(image, k, tileSize = 256):
     Parameters
     ----------
 
-    M_nuc : 2D numpy array
-        Downsampled data from BigStitcher 
-
-    M_cyt : 2D numpy array
-        Downsampled data from BigStitcher
+    image : 2D numpy array
+        Downsampled data 
 
     k : int
-        Index for image location in full res HDF5 file
+        Index for image location in full res data
 
     tileSize : int
         Default = 256, block size for interpolation
@@ -738,10 +735,7 @@ def interpolateDS(image, k, tileSize = 256):
     Returns
     -------
 
-    C_nuc : 2D numpy array
-        Rescaled downsampled data
-
-    C_cyt : 2D numpy array
+    C_final : 2D numpy array
         Rescaled downsampled data
 
     """
