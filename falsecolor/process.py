@@ -35,7 +35,6 @@ import skimage.util as util
 from skimage import color
 import cv2
 import numpy
-import h5py as hp
 from numba import cuda, njit
 import matplotlib.pyplot as plt
 
