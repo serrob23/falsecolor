@@ -229,26 +229,27 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                                                 pre_cyto_output)
     
     #create output array to iterate through
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]), 
-                                                        dtype = numpy.uint8) 
+    output_global = cuda.to_device(numpy.zeros((3,
+                                                nuclei.shape[0],
+                                                nuclei.shape[1]), 
+                                                dtype = numpy.uint8))
+
+    #allocate memory on GPU
+    nuclei_global = cuda.to_device(pre_nuc_output)
+    cyto_global = cuda.to_device(pre_cyto_output)                  
 
     #iterate through output and assign values based on RGB settings
-    for i,z in enumerate(RGB_image): #TODO: speed this up on GPU
-
-        #allocate memory on GPU: background subtracted images and final output
-        output_global = cuda.to_device(numpy.zeros(z.shape)) 
-        nuclei_global = cuda.to_device(pre_nuc_output)
-        cyto_global = cuda.to_device(pre_cyto_output)
+    for i,z in enumerate(output_global):
 
         #get 8bit frame
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global, 
-                                                cyto_global, 
-                                                output_global,
-                                                nuc_settings[i], 
-                                                cyto_settings[i],
-                                                k_nuclei, k_cyto)
+                                            cyto_global, 
+                                            z,
+                                            nuc_settings[i], 
+                                            cyto_settings[i],
+                                            k_nuclei, k_cyto)
         
-        RGB_image[i] = output_global.copy_to_host()
+    RGB_image = output_global.copy_to_host()
 
     #reorder array to dimmensional form [X,Y,C]
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
