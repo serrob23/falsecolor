@@ -715,7 +715,7 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
     return flat_field, background
 
 
-def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
+def interpolateDS(image, k, tileSize = 256):
     """
     Method for resizing downsampled data to be the same size as full 
     resolution data. Used for interpolating flat field images.
@@ -751,36 +751,26 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
     x = k/tileSize
 
     #get background block
-    if k < int(M_nuc.shape[1]*tileSize-tileSize):
+    if k < int(image.shape[1]*tileSize-tileSize):
         if k < int(tileSize/2):
-            C_nuc = M_nuc[:,0,:]
-            C_cyt = M_cyt[:,0,:]
+            C_img = image[:,0,:]
 
         elif x0==x1:
-            C_nuc = M_nuc[:,int(x1),:]
-            C_cyt = M_cyt[:,int(x1),:]
+            C_img = image[:,int(x1),:]
         else:
-            nuc_norm0 = M_nuc[:,int(x0),:]
-            nuc_norm1 = M_nuc[:,int(x1),:]
+            img_norm0 = image[:,int(x0),:]
+            img_norm1 = image[:,int(x1),:]
 
-            cyto_norm0 = M_cyt[:,int(x0),:]
-            cyto_norm1 = M_cyt[:,int(x1),:]
-
-            C_nuc = nuc_norm0 + (x-x0)*(nuc_norm1 - nuc_norm0)/(x1-x0)
-            C_cyt = cyto_norm0 + (x-x0)*(cyto_norm1 - cyto_norm0)/(x1-x0)
+            C_img = img_norm0 + (x-x0)*(img_norm1 - img_norm0)/(x1-x0)
     else:
-        C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
-        C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
+        C_img = image[:,image.shape[1]-1, :]
 
 
     #interpolate flat fields
-    C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, 
+    C_final = nd.interpolation.zoom(C_img, tileSize, order = 1, 
                                                         mode = 'nearest')
 
-    C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, 
-                                                        mode = 'nearest')
-
-    return C_nuc, C_cyt
+    return C_final
 
 
 def deconvolveColors(image):
