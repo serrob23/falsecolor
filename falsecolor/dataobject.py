@@ -32,7 +32,7 @@ from skimage.io import imread
 import numpy
 from pathos.multiprocessing import ProcessingPool
 import h5py as hp
-import FalseColor.coloring as fc
+import falsecolor.coloring as fc
 
 class DataObject(object):
     def __init__(self, directory, imageSet = None,

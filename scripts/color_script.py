@@ -28,8 +28,8 @@ Rob Serafin
 """
 
 import os
-import FalseColor.coloring as fc
-from FalseColor.savethread import saveProcess
+import falsecolor.coloring as fc
+from falsecolor.savethread import saveProcess
 import numpy 
 from scipy import ndimage
 import copy
