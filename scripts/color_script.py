@@ -110,10 +110,10 @@ def main():
     M_cyt  = fc.getIntensityMap(cyto_ds)
 
     bkg_nuc = fc.getBackgroundLevels(nuclei_ds)
-    bkg_cyto = fc.getFlatField(cyto_ds)
+    bkg_cyto = fc.getBackgroundLevels(cyto_ds)
 
     dataQueue = mp.Queue()
-    save_thread = mp.Process(target = saveProcess,args = [dataQueue])
+    save_thread = mp.Process(target = saveProcess, args = [dataQueue])
     save_thread.start()
 
     #create reference to full res data
