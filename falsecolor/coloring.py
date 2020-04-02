@@ -744,7 +744,7 @@ def interpolateDS(image, k, tileSize = 256):
     x1 = numpy.ceil(k/tileSize)
     x = k/tileSize
 
-    #get background block
+    #find region in downsampled data
     if k < int(image.shape[1]*tileSize-tileSize):
         if k < int(tileSize/2):
             C_img = image[:,0,:]
@@ -755,6 +755,7 @@ def interpolateDS(image, k, tileSize = 256):
             img_norm0 = image[:,int(x0),:]
             img_norm1 = image[:,int(x1),:]
 
+            #average between two indicies
             C_img = img_norm0 + (x-x0)*(img_norm1 - img_norm0)/(x1-x0)
     else:
         C_img = image[:,image.shape[1]-1, :]
