@@ -653,7 +653,7 @@ def getBackgroundLevels(image, threshold = 50):
     return hi_val, background
 
 
-def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
+def getFlatField(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
 
     """
     Returns downsampled flat field of image data and calculated 
@@ -665,8 +665,12 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
     image : 2D or 3D numpy array
 
     tileSize : int
+        default is 256. Lateral size for data partition. Smaller 
+        tileSize will result in higher resolution 3D intensity maps.
 
     blockSize : int
+        default is 16. The final size of the downsampled map will be the 
+        tileSize divided by blockSize.
 
     Returns
     -------
@@ -678,7 +682,7 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
         Background level for input image
     """
 
-    midrange,background = getBackgroundLevels(image, threshold = bg_threshold)
+    midrange, background = getBackgroundLevels(image, threshold = bgThreshold)
     
     rows_max = int(numpy.ceil(image.shape[0]/blockSize)*blockSize)
     cols_max = int(numpy.ceil(image.shape[2]/blockSize)*blockSize)
@@ -712,7 +716,7 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
                     Mtemp = numpy.median(ROI_0[fkg_ind])
                 flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
 
-    return flat_field, background
+    return flat_field
 
 
 def interpolateDS(image, k, tileSize = 256):
