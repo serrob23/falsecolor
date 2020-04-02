@@ -84,8 +84,11 @@ def main():
     nuclei_ds = f['/t00000/s00/4/cells']
     cyto_ds = f['/t00000/s01/4/cells']
 
-    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k 
-    #on will be processed, at intervals of skip_k
+    #indices to pseudo color, if stop_k = 0 the entire dataset from 
+    #start_k on will be processed, at intervals of skip_k 
+    #otherwise stop_k will be the total number of images processed
+    #starting from start_k
+    
     start_k = args.start_k
     stop_k = args.stop_k
     skip_k = args.skip_k
