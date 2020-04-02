@@ -653,11 +653,17 @@ def getBackgroundLevels(image, threshold = 50):
     return hi_val, background
 
 
-def getFlatField(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
+def getFlatField(*args):
+    print('depreciated use getIntensityMap instead')
+
+
+def getIntensityMap(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
 
     """
-    Returns downsampled flat field of image data and calculated 
-    background levels.
+    Returns downsampled 3D intensity leveling map of image data by 
+    breaking image data up into equal sized cubes. Areas which fall 
+    beneath the background threshold will be set to median the median 
+    intensity value of the data cube.
 
     Parameters
     ----------
@@ -675,11 +681,9 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
     Returns
     -------
 
-    flat_field : 2D numpy array
-        Calculated flat field for input image
+    intensityMap : 3D numpy array
+        Calculated intensity map for input image
 
-    background : float
-        Background level for input image
     """
 
     midrange, background = getBackgroundLevels(image, threshold = bgThreshold)
@@ -698,7 +702,7 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
     stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), 
                                         int(tileSize/blockSize))
     
-    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, 
+    intensityMap = numpy.zeros((len(rows)-1, len(stacks)-1, 
                                             len(cols)-1), dtype = float)
     
     for i in range(1,len(rows)):
@@ -714,9 +718,10 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
                     Mtemp = midrange
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
-                flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
+                intensityMap[i-1, j-1, k-1] = Mtemp + \
+                                             intensityMap[i-1, j-1, k-1]
 
-    return flat_field
+    return intensityMap
 
 
 def interpolateDS(image, k, tileSize = 256):
