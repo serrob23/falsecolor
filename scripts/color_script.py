@@ -54,7 +54,7 @@ def main():
     #saved result format
     parser.add_argument("format", type = str, help= 'imagris file')
 
-    #index to start/stop processing, skip_k is the stepsize interval defaults to 1
+    #index to start/stop processing, skip_k is the stepsize interval
     parser.add_argument("start_k", type = int, help = 'imaris file')
     parser.add_argument("stop_k", type = int, help= 'imaris file')
     parser.add_argument("skip_k", type = int, nargs = '?', default = 1)
@@ -148,14 +148,16 @@ def main():
             #subtract background and reset values > 0 and < 2**16
             print('Reading Data')
             t_nuc = time.time()
-            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0],k,0:tileSize*M_nuc.shape[2]].astype(numpy.uint16)
+            nuclei = nuclei_hires[0:tileSize*M_nuc.shape[0], k, \
+                                0:tileSize*M_nuc.shape[2]].astype(numpy.uint16)
             nuclei = nuclei.astype(float)
             nuclei -= 0.5*bkg_nuc
             nuclei = numpy.clip(nuclei,0,65535)
             print('read time nuclei', time.time()-t_nuc)
 
             t_cyt = time.time()
-            cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]]
+            cyto = cyto_hires[0:tileSize*M_cyt.shape[0], k, \
+                                0:tileSize*M_cyt.shape[2]].astype(numpy.uint16)
             cyto = cyto.astype(float)
             cyto -= 3*bkg_cyto
             cyto = numpy.clip(cyto,0,65535)
