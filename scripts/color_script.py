@@ -55,8 +55,8 @@ def main():
     parser.add_argument("format", type = str, help= 'imagris file')
 
     #index to start/stop processing, skip_k is the stepsize interval defaults to 1
-    parser.add_argument("start_k", type = int, help = 'imagris file')
-    parser.add_argument("stop_k", type = int, help= 'imagris file')
+    parser.add_argument("start_k", type = int, help = 'imaris file')
+    parser.add_argument("stop_k", type = int, help= 'imaris file')
     parser.add_argument("skip_k", type = int, nargs = '?', default = 1)
 
     #constants for coloring normalization and sharpening (alpha)
@@ -106,7 +106,8 @@ def main():
     elif stop_k == 0:
         stop_k = nuclei_ds.shape[1]*16
 
-    print('Reading data from index:', start_k,'to ' ,stop_k, 'at stepsize = ', skip_k)
+    print('Reading data from index:', start_k, 'to ' ,stop_k, \
+                                                'at stepsize = ', skip_k)
 
     #calculate flat field
     M_nuc = fc.getIntensityMap(nuclei_ds)
@@ -165,15 +166,18 @@ def main():
             nuclei = fc.sharpenImage(nuclei, alpha = alpha)
             cyto = fc.sharpenImage(cyto, alpha = alpha)
 
-            #interpolate downsampled images to full res size to use as flat fielding mask
-            C_nuc, C_cyt = fc.interpolateDS(M_nuc, M_cyt, k)
+            #interpolate downsampled data to full res to use as leveling map
+            C_nuc = fc.interpolateDS(M_nuc, k, beta = nuc_norm_constant)
+            C_cyto = fc.interpolateDS(M_cyto, k, beta = cyto_norm_constant)
 
             print('False Coloring')
 
             #Execute false coloring method
-            RGB_image = fc.rapidFalseColor(nuclei, cyto, nuclei_RGBsettings, cyto_RGBsettings,
-                                            nuc_normfactor = nuc_norm_constant*C_nuc, 
-                                            cyto_normfactor = cyto_norm_constant*C_cyt,
+            RGB_image = fc.rapidFalseColor(nuclei, cyto, 
+                                            nuclei_RGBsettings, 
+                                            cyto_RGBsettings,
+                                            nuc_normfactor = nuc_norm_constant, 
+                                            cyto_normfactor = cyto_norm_constant,
                                             run_FlatField_nuc = True,
                                             run_FlatField_cyto = True)
 
