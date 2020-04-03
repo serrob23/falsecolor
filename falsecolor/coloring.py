@@ -724,7 +724,7 @@ def getIntensityMap(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
     return intensityMap
 
 
-def interpolateDS(image, k, tileSize = 256):
+def interpolateDS(image, k, tileSize = 256, beta = 1.0):
     """
     Method for resizing downsampled data to be the same size as full 
     resolution data. Used for interpolating flat field images.
@@ -740,6 +740,10 @@ def interpolateDS(image, k, tileSize = 256):
 
     tileSize : int
         Default = 256, block size for interpolation
+
+    beta : float
+        Default = 1.0, multiplicative constant for final interpolated 
+        data.
 
     Returns
     -------
@@ -771,7 +775,7 @@ def interpolateDS(image, k, tileSize = 256):
 
 
     #interpolate flat fields
-    C_final = nd.interpolation.zoom(C_img, tileSize, order = 1, 
+    C_final = beta*nd.interpolation.zoom(C_img, tileSize, order = 1, 
                                                         mode = 'nearest')
 
     return C_final
