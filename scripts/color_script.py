@@ -59,10 +59,13 @@ def main():
     parser.add_argument("stop_k", type = int, help= 'imagris file')
     parser.add_argument("skip_k", type = int, nargs = '?', default = 1)
 
-    #constants for coloring normalization and sharpening (alpha), defaults shown below
-    parser.add_argument("Nuclei_Normfactor", type = float, nargs = '?', default = 1.5)
-    parser.add_argument("Cyto_Normfactor", type = float, nargs = '?', default = 3.72)
-    parser.add_argument("alpha", type = float, nargs = '?', default = 0.5, help = 'imaris file')
+    #constants for coloring normalization and sharpening (alpha)
+    parser.add_argument("Nuclei_Normfactor", type = float, nargs = '?', 
+                                                            default = 1.5)
+    parser.add_argument("Cyto_Normfactor", type = float, nargs = '?', 
+                                                            default = 3.72)
+    parser.add_argument("alpha", type = float, nargs = '?', 
+                                        default = 0.5, help = 'imaris file')
 
     #get arguments
     args = parser.parse_args()
@@ -81,8 +84,11 @@ def main():
     nuclei_ds = f['/t00000/s00/4/cells']
     cyto_ds = f['/t00000/s01/4/cells']
 
-    #indices to pseudo color, if stop_k = 0 the entire dataset from start_k 
-    #on will be processed, at intervals of skip_k
+    #indices to pseudo color, if stop_k = 0 the entire dataset from 
+    #start_k on will be processed, at intervals of skip_k 
+    #otherwise stop_k will be the total number of images processed
+    #starting from start_k
+    
     start_k = args.start_k
     stop_k = args.stop_k
     skip_k = args.skip_k
@@ -103,11 +109,14 @@ def main():
     print('Reading data from index:', start_k,'to ' ,stop_k, 'at stepsize = ', skip_k)
 
     #calculate flat field
-    M_nuc,bkg_nuc = fc.getFlatField(nuclei_ds)
-    M_cyt,bkg_cyt = fc.getFlatField(cyto_ds)
+    M_nuc = fc.getIntensityMap(nuclei_ds)
+    M_cyt  = fc.getIntensityMap(cyto_ds)
+
+    bkg_nuc = fc.getBackgroundLevels(nuclei_ds)
+    bkg_cyto = fc.getBackgroundLevels(cyto_ds)
 
     dataQueue = mp.Queue()
-    save_thread = mp.Process(target = saveProcess,args = [dataQueue])
+    save_thread = mp.Process(target = saveProcess, args = [dataQueue])
     save_thread.start()
 
     #create reference to full res data
@@ -147,7 +156,7 @@ def main():
             t_cyt = time.time()
             cyto = cyto_hires[0:tileSize*M_cyt.shape[0],k,0:tileSize*M_cyt.shape[2]]
             cyto = cyto.astype(float)
-            cyto -= 3*bkg_cyt
+            cyto -= 3*bkg_cyto
             cyto = numpy.clip(cyto,0,65535)
             print('read time cyto', time.time() - t_cyt)
 

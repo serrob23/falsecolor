@@ -229,26 +229,27 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                                                 pre_cyto_output)
     
     #create output array to iterate through
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]), 
-                                                        dtype = numpy.uint8) 
+    output_global = cuda.to_device(numpy.zeros((3,
+                                                nuclei.shape[0],
+                                                nuclei.shape[1]), 
+                                                dtype = numpy.uint8))
+
+    #allocate memory on GPU
+    nuclei_global = cuda.to_device(pre_nuc_output)
+    cyto_global = cuda.to_device(pre_cyto_output)                  
 
     #iterate through output and assign values based on RGB settings
-    for i,z in enumerate(RGB_image): #TODO: speed this up on GPU
-
-        #allocate memory on GPU: background subtracted images and final output
-        output_global = cuda.to_device(numpy.zeros(z.shape)) 
-        nuclei_global = cuda.to_device(pre_nuc_output)
-        cyto_global = cuda.to_device(pre_cyto_output)
+    for i,z in enumerate(output_global):
 
         #get 8bit frame
         rapid_getRGBframe[blockspergrid,TPB](nuclei_global, 
-                                                cyto_global, 
-                                                output_global,
-                                                nuc_settings[i], 
-                                                cyto_settings[i],
-                                                k_nuclei, k_cyto)
+                                            cyto_global, 
+                                            z,
+                                            nuc_settings[i], 
+                                            cyto_settings[i],
+                                            k_nuclei, k_cyto)
         
-        RGB_image[i] = output_global.copy_to_host()
+    RGB_image = output_global.copy_to_host()
 
     #reorder array to dimmensional form [X,Y,C]
     RGB_image = numpy.moveaxis(RGB_image,0,-1)
@@ -528,7 +529,7 @@ def sharpenImage(input_image, alpha = 0.5):
     Convolve2d[grid,blocks](input_image,hkernel,houtput)
 
     #calculate final result
-    final_image = input_image + 0.5*numpy.sqrt(voutput**2 + houtput**2)
+    final_image = input_image + alpha*numpy.sqrt(voutput**2 + houtput**2)
     
     return final_image
 
@@ -652,11 +653,17 @@ def getBackgroundLevels(image, threshold = 50):
     return hi_val, background
 
 
-def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
+def getFlatField(*args):
+    print('depreciated use getIntensityMap instead')
+
+
+def getIntensityMap(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
 
     """
-    Returns downsampled flat field of image data and calculated 
-    background levels.
+    Returns downsampled 3D intensity leveling map of image data by 
+    breaking image data up into equal sized cubes. Areas which fall 
+    beneath the background threshold will be set to median the median 
+    intensity value of the data cube.
 
     Parameters
     ----------
@@ -664,20 +671,22 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
     image : 2D or 3D numpy array
 
     tileSize : int
+        default is 256. Lateral size for data partition. Smaller 
+        tileSize will result in higher resolution 3D intensity maps.
 
     blockSize : int
+        default is 16. The final size of the downsampled map will be the 
+        tileSize divided by blockSize.
 
     Returns
     -------
 
-    flat_field : 2D numpy array
-        Calculated flat field for input image
+    intensityMap : 3D numpy array
+        Calculated intensity map for input image
 
-    background : float
-        Background level for input image
     """
 
-    midrange,background = getBackgroundLevels(image, threshold = bg_threshold)
+    midrange, background = getBackgroundLevels(image, threshold = bgThreshold)
     
     rows_max = int(numpy.ceil(image.shape[0]/blockSize)*blockSize)
     cols_max = int(numpy.ceil(image.shape[2]/blockSize)*blockSize)
@@ -693,7 +702,7 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
     stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), 
                                         int(tileSize/blockSize))
     
-    flat_field = numpy.zeros((len(rows)-1, len(stacks)-1, 
+    intensityMap = numpy.zeros((len(rows)-1, len(stacks)-1, 
                                             len(cols)-1), dtype = float)
     
     for i in range(1,len(rows)):
@@ -709,12 +718,13 @@ def getFlatField(image, tileSize = 256, blockSize = 16, bg_threshold = 50):
                     Mtemp = midrange
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
-                flat_field[i-1, j-1, k-1] = Mtemp + flat_field[i-1, j-1, k-1]
+                intensityMap[i-1, j-1, k-1] = Mtemp + \
+                                             intensityMap[i-1, j-1, k-1]
 
-    return flat_field, background
+    return intensityMap
 
 
-def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
+def interpolateDS(image, k, tileSize = 256, beta = 1.0):
     """
     Method for resizing downsampled data to be the same size as full 
     resolution data. Used for interpolating flat field images.
@@ -722,25 +732,23 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
     Parameters
     ----------
 
-    M_nuc : 2D numpy array
-        Downsampled data from BigStitcher 
-
-    M_cyt : 2D numpy array
-        Downsampled data from BigStitcher
+    image : 2D numpy array
+        Downsampled data 
 
     k : int
-        Index for image location in full res HDF5 file
+        Index for image location in full res data
 
     tileSize : int
         Default = 256, block size for interpolation
 
+    beta : float
+        Default = 1.0, multiplicative constant for final interpolated 
+        data.
+
     Returns
     -------
 
-    C_nuc : 2D numpy array
-        Rescaled downsampled data
-
-    C_cyt : 2D numpy array
+    C_final : 2D numpy array
         Rescaled downsampled data
 
     """
@@ -749,37 +757,28 @@ def interpolateDS(M_nuc, M_cyt, k, tileSize = 256):
     x1 = numpy.ceil(k/tileSize)
     x = k/tileSize
 
-    #get background block
-    if k < int(M_nuc.shape[1]*tileSize-tileSize):
+    #find region in downsampled data
+    if k < int(image.shape[1]*tileSize-tileSize):
         if k < int(tileSize/2):
-            C_nuc = M_nuc[:,0,:]
-            C_cyt = M_cyt[:,0,:]
+            C_img = image[:,0,:]
 
         elif x0==x1:
-            C_nuc = M_nuc[:,int(x1),:]
-            C_cyt = M_cyt[:,int(x1),:]
+            C_img = image[:,int(x1),:]
         else:
-            nuc_norm0 = M_nuc[:,int(x0),:]
-            nuc_norm1 = M_nuc[:,int(x1),:]
+            img_norm0 = image[:,int(x0),:]
+            img_norm1 = image[:,int(x1),:]
 
-            cyto_norm0 = M_cyt[:,int(x0),:]
-            cyto_norm1 = M_cyt[:,int(x1),:]
-
-            C_nuc = nuc_norm0 + (x-x0)*(nuc_norm1 - nuc_norm0)/(x1-x0)
-            C_cyt = cyto_norm0 + (x-x0)*(cyto_norm1 - cyto_norm0)/(x1-x0)
+            #average between two indicies
+            C_img = img_norm0 + (x-x0)*(img_norm1 - img_norm0)/(x1-x0)
     else:
-        C_nuc = M_nuc[:,M_nuc.shape[1]-1, :]
-        C_cyt = M_cyt[:,M_cyt.shape[1]-1, :]
+        C_img = image[:,image.shape[1]-1, :]
 
 
     #interpolate flat fields
-    C_nuc = nd.interpolation.zoom(C_nuc, tileSize, order = 1, 
+    C_final = beta*nd.interpolation.zoom(C_img, tileSize, order = 1, 
                                                         mode = 'nearest')
 
-    C_cyt = nd.interpolation.zoom(C_cyt, tileSize, order = 1, 
-                                                        mode = 'nearest')
-
-    return C_nuc, C_cyt
+    return C_final
 
 
 def deconvolveColors(image):
