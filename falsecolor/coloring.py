@@ -423,21 +423,21 @@ def preProcess(image, threshold=50, normfactor=None):
     -------
 
     processed_image : 2D numpy array
-        Background subtracted image. 
+        Background subtracted image.
     """
 
-    #background subtraction
+    # background subtraction
     image -= threshold
 
-    #no negative values
+    # no negative values
     image[image < 0] = 0
 
-    #calculate normalization factor
-    image = numpy.power(image,0.85)
+    # calculate normalization factor
+    image = numpy.power(image, 0.85)
     if normfactor is None:
-        normfactor = numpy.mean(image[image>threshold])*8
+        normfactor = numpy.mean(image[image > threshold])*8
 
-    #convert into 8bit range
+    # convert into 8bit range
     processed_image = image*(65535/normfactor)*(255/65535)
 
     return processed_image
@@ -462,36 +462,36 @@ def Convolve2d(image, kernel, output):
 
     Returns
     -------
-    This method requires an output array as an argument, the results 
+    This method requires an output array as an argument, the results
     of the compuation are stored there.
     """
 
-    #create iterator
-    row,col = cuda.grid(2)
-    
-    image_rows,image_cols = image.shape
-    
+    # create iterator
+    row, col = cuda.grid(2)
+
+    image_rows, image_cols = image.shape
+
     delta_r = kernel.shape[0]//2
     delta_c = kernel.shape[1]//2
-    
-    #ignore rows/cols outside image
+
+    # ignore rows/cols outside image
     if (row >= image_rows) or (col >= image_cols):
         return
-    
+
     tmp = 0
     for i in range(kernel.shape[0]):
         for j in range(kernel.shape[1]):
-            #result should be sum of kernel*image as kernel is varied
+            # result should be sum of kernel*image as kernel is varied
             row_i = row - i + delta_r
             col_j = col - j + delta_c
-            if (row_i>=0) and (row_i < image_rows):
-                if (col_j>=0) and (col_j < image_cols):
-                    tmp += kernel[i,j]*image[row_i,col_j]
-                    
-    output[row,col] = tmp 
+            if (row_i >= 0) and (row_i < image_rows):
+                if (col_j >= 0) and (col_j < image_cols):
+                    tmp += kernel[i, j]*image[row_i, col_j]
+
+    output[row, col] = tmp
 
 
-def sharpenImage(input_image, alpha = 0.5):
+def sharpenImage(input_image, alpha=0.5):
     """
     Image sharpening algorithm to amplify edges.
 
@@ -510,29 +510,29 @@ def sharpenImage(input_image, alpha = 0.5):
     final_image : 2D numpy array
         The sum of the input image and the resulting convolutions
     """
-    #create kernels to amplify edges
-    hkernel = numpy.array([[1,1,1],[0,0,0],[-1,-1,-1]])
-    vkernel = numpy.array([[1,0,-1],[1,0,-1],[1,0,-1]])
+    # create kernels to amplify edges
+    hkernel = numpy.array([[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
+    vkernel = numpy.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
 
-    #set grid/threads for GPU
-    blocks = (32,32)
-    grid = (input_image.shape[0]//blocks[0] + 1, 
-                                input_image.shape[1]//blocks[1] + 1)
+    # set grid/threads for GPU
+    blocks = (32, 32)
+    grid = (input_image.shape[0]//blocks[0] + 1,
+            input_image.shape[1]//blocks[1] + 1)
 
-    #run convolution
+    # run convolution
     input_image = numpy.ascontiguousarray(input_image)
-    voutput = numpy.zeros(input_image.shape,dtype=numpy.float64)
-    houtput = numpy.zeros(input_image.shape,dtype=numpy.float64)
-    Convolve2d[grid,blocks](input_image,vkernel,voutput)
-    Convolve2d[grid,blocks](input_image,hkernel,houtput)
+    voutput = numpy.zeros(input_image.shape, dtype=numpy.float64)
+    houtput = numpy.zeros(input_image.shape, dtype=numpy.float64)
+    Convolve2d[grid, blocks](input_image, vkernel, voutput)
+    Convolve2d[grid, blocks](input_image, hkernel, houtput)
 
-    #calculate final result
+    # calculate final result
     final_image = input_image + alpha*numpy.sqrt(voutput**2 + houtput**2)
-    
+
     return final_image
 
 
-def getColorSettings(key = 'HE'):
+def getColorSettings(key='HE'):
 
     """Returns color parameters for false coloring data.
 
@@ -540,7 +540,7 @@ def getColorSettings(key = 'HE'):
     ----------
 
     key : str
-        Defaults to 'HE'. Which RGB settings to use, when 'HE' will use 
+        Defaults to 'HE'. Which RGB settings to use, when 'HE' will use
         RGB settings for virtual H&E staining.
 
         'IHC' will return color settings for virtual IHC/DAB staining.
@@ -549,33 +549,33 @@ def getColorSettings(key = 'HE'):
     Returns
     -------
     color_dict : dict
-        Dictionary with keys ('nuclei', 'cyto') or ('nuclei', 'anti'), 
-        which correspond to lists containing empirically derived 
+        Dictionary with keys ('nuclei', 'cyto') or ('nuclei', 'anti'),
+        which correspond to lists containing empirically derived
         RGB constants for false coloring.
 
 
     """
 
     color_dict = {
-                    'HE' : {'nuclei' : [0.17, 0.27, 0.105],
-                          'cyto' : [0.05, 1.0, 0.54]},
+                    'HE': {'nuclei': [0.17, 0.27, 0.105],
+                           'cyto': [0.05, 1.0, 0.54]},
 
-                    'IHC' : {'nuclei' : [0.65, 0.45, 0.15],
-                             'anti' : [ 0.4, 0.7, 0.9]}
+                    'IHC': {'nuclei': [0.65, 0.45, 0.15],
+                            'anti': [0.4, 0.7, 0.9]}
                 }
 
     return color_dict[key]
 
 
-def applyCLAHE(image, clahe = None, 
-                    tileGridSize = (8,8), 
-                    input_dtype = numpy.uint16,
-                    clipLimit = 0.048):
+def applyCLAHE(image, clahe=None,
+               tileGridSize=(8, 8),
+               input_dtype=numpy.uint16,
+               clipLimit=0.048):
     """
-    Applies Contrast Limited Adaptive Histogram Equalization algorithm 
-    from OpenCV. 
+    Applies Contrast Limited Adaptive Histogram Equalization algorithm
+    from OpenCV.
 
-    Parameters 
+    Parameters
     ----------
 
     image : 2D numpy array
@@ -585,7 +585,7 @@ def applyCLAHE(image, clahe = None,
         CV2 object to use for equalization
 
     tileGridSize : tuple
-        Tuple of ints representing the windowsize for CLAHE, 
+        Tuple of ints representing the windowsize for CLAHE,
         default is (32,32)
 
     input_dtype : numpy dtype
@@ -601,25 +601,25 @@ def applyCLAHE(image, clahe = None,
     """
 
     if clahe is None:
-        #create clahe object
-        clahe = cv2.createCLAHE(tileGridSize = tileGridSize, 
-                                                    clipLimit = clipLimit)
+        # create clahe object
+        clahe = cv2.createCLAHE(tileGridSize=tileGridSize,
+                                clipLimit=clipLimit)
 
-    #ensure image is of uint dtype
+    # ensure image is of uint dtype
     image = image.astype(input_dtype)
 
-    #apply CLAHE
+    # apply CLAHE
     equalized_image = clahe.apply(image)
 
-    #Renormalize to original image levels
+    # Renormalize to original image levels
     final_image = (image.max())*(equalized_image/equalized_image.max())
 
     return final_image.astype(input_dtype)
 
 
-def getBackgroundLevels(image, threshold = 50):
+def getBackgroundLevels(image, threshold=50):
     """
-    Calculate foreground and background values based on image 
+    Calculate foreground and background values based on image
     statistics, background is currently set to be 20% of foreground.
 
     Parameters
@@ -640,7 +640,7 @@ def getBackgroundLevels(image, threshold = 50):
         Background value
     """
 
-    image_DS = numpy.sort(image,axis=None)
+    image_DS = numpy.sort(image, axis=None)
 
     foreground_vals = image_DS[numpy.where(image_DS > threshold)]
 
@@ -655,12 +655,12 @@ def getFlatField(*args):
     print('depreciated use getIntensityMap instead')
 
 
-def getIntensityMap(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
+def getIntensityMap(image, tileSize=256, blockSize=16, bgThreshold=50):
 
     """
-    Returns downsampled 3D intensity leveling map of image data by 
-    breaking image data up into equal sized cubes. Areas which fall 
-    beneath the background threshold will be set to median the median 
+    Returns downsampled 3D intensity leveling map of image data by
+    breaking image data up into equal sized cubes. Areas which fall
+    beneath the background threshold will be set to median the median
     intensity value of the data cube.
 
     Parameters
@@ -669,11 +669,11 @@ def getIntensityMap(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
     image : 2D or 3D numpy array
 
     tileSize : int
-        default is 256. Lateral size for data partition. Smaller 
+        default is 256. Lateral size for data partition. Smaller
         tileSize will result in higher resolution 3D intensity maps.
 
     blockSize : int
-        default is 16. The final size of the downsampled map will be the 
+        default is 16. The final size of the downsampled map will be the
         tileSize divided by blockSize.
 
     Returns
@@ -684,54 +684,53 @@ def getIntensityMap(image, tileSize = 256, blockSize = 16, bgThreshold = 50):
 
     """
 
-    midrange, background = getBackgroundLevels(image, threshold = bgThreshold)
-    
+    midrange, background = getBackgroundLevels(image, threshold=bgThreshold)
+
     rows_max = int(numpy.ceil(image.shape[0]/blockSize)*blockSize)
     cols_max = int(numpy.ceil(image.shape[2]/blockSize)*blockSize)
     stacks_max = int(numpy.ceil(image.shape[1]/blockSize)*blockSize)
 
+    rows = numpy.arange(0, rows_max+int(tileSize/blockSize),
+                        int(tileSize/blockSize))
 
-    rows = numpy.arange(0, rows_max+int(tileSize/blockSize), 
-                                        int(tileSize/blockSize))
+    cols = numpy.arange(0, cols_max+int(tileSize/blockSize),
+                        int(tileSize/blockSize))
 
-    cols = numpy.arange(0, cols_max+int(tileSize/blockSize), 
-                                        int(tileSize/blockSize))
+    stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize),
+                          int(tileSize/blockSize))
 
-    stacks = numpy.arange(0, stacks_max+int(tileSize/blockSize), 
-                                        int(tileSize/blockSize))
-    
-    intensityMap = numpy.zeros((len(rows)-1, len(stacks)-1, 
-                                            len(cols)-1), dtype = float)
-    
-    for i in range(1,len(rows)):
-        for j in range(1,len(stacks)):
-            for k in range(1,len(cols)):
+    intensityMap = numpy.zeros((len(rows)-1, len(stacks)-1,
+                                len(cols)-1), dtype=float)
 
-                ROI_0 = image[rows[i-1]:rows[i], 
-                                stacks[j-1]:stacks[j], 
-                                cols[k-1]:cols[k]]
-                
+    for i in range(1, len(rows)):
+        for j in range(1, len(stacks)):
+            for k in range(1, len(cols)):
+
+                ROI_0 = image[rows[i-1]:rows[i],
+                              stacks[j-1]:stacks[j],
+                              cols[k-1]:cols[k]]
+
                 fkg_ind = numpy.where(ROI_0 > background)
-                if fkg_ind[0].size==0:
+                if fkg_ind[0].size == 0:
                     Mtemp = midrange
                 else:
                     Mtemp = numpy.median(ROI_0[fkg_ind])
                 intensityMap[i-1, j-1, k-1] = Mtemp + \
-                                             intensityMap[i-1, j-1, k-1]
+                    intensityMap[i-1, j-1, k-1]
 
     return intensityMap
 
 
-def interpolateDS(image, k, tileSize = 256, beta = 1.0):
+def interpolateDS(image, k, tileSize=256, beta=1.0):
     """
-    Method for resizing downsampled data to be the same size as full 
+    Method for resizing downsampled data to be the same size as full
     resolution data. Used for interpolating flat field images.
 
     Parameters
     ----------
 
     image : 2D numpy array
-        Downsampled data 
+        Downsampled data
 
     k : int
         Index for image location in full res data
@@ -740,7 +739,7 @@ def interpolateDS(image, k, tileSize = 256, beta = 1.0):
         Default = 256, block size for interpolation
 
     beta : float
-        Default = 1.0, multiplicative constant for final interpolated 
+        Default = 1.0, multiplicative constant for final interpolated
         data.
 
     Returns
@@ -755,40 +754,39 @@ def interpolateDS(image, k, tileSize = 256, beta = 1.0):
     x1 = numpy.ceil(k/tileSize)
     x = k/tileSize
 
-    #find region in downsampled data
+    # find region in downsampled data
     if k < int(image.shape[1]*tileSize-tileSize):
         if k < int(tileSize/2):
-            C_img = image[:,0,:]
+            C_img = image[:, 0, :]
 
-        elif x0==x1:
-            C_img = image[:,int(x1),:]
+        elif x0 == x1:
+            C_img = image[:, int(x1), :]
         else:
-            img_norm0 = image[:,int(x0),:]
-            img_norm1 = image[:,int(x1),:]
+            img_norm0 = image[:, int(x0), :]
+            img_norm1 = image[:, int(x1), :]
 
-            #average between two indicies
+            # average between two indicies
             C_img = img_norm0 + (x-x0)*(img_norm1 - img_norm0)/(x1-x0)
     else:
-        C_img = image[:,image.shape[1]-1, :]
+        C_img = image[:, image.shape[1]-1, :]
 
-
-    #interpolate flat fields
-    C_final = beta*nd.interpolation.zoom(C_img, tileSize, order = 1, 
-                                                        mode = 'nearest')
+    # interpolate flat fields
+    C_final = beta*nd.interpolation.zoom(C_img, tileSize, order=1,
+                                         mode='nearest')
 
     return C_final
 
 
 def deconvolveColors(image):
     """
-    Separates H&E channels from an RGB image using skimage.color.rgb2hed 
+    Separates H&E channels from an RGB image using skimage.color.rgb2hed
     method.
 
     Parameters
     ----------
 
     image : 3D numpy array
-        RGB image in the format [X, Y, C] where the hematoxylin and 
+        RGB image in the format [X, Y, C] where the hematoxylin and
         eosin channels are to be separted.
 
     Returns
@@ -805,34 +803,34 @@ def deconvolveColors(image):
 
     separated_image = rgb2hed(image)
 
-    hematoxylin = separated_image[:,:,0]
+    hematoxylin = separated_image[:, :, 0]
 
-    eosin = separated_image[:,:,1]
+    eosin = separated_image[:, :, 1]
 
     return hematoxylin, eosin
 
 
-def segmentNuclei(image, return3D = True, 
-                    opening = True, 
-                    radius = 3, 
-                    min_size = 64,
-                    return_cyto = False):
+def segmentNuclei(image, return3D=True,
+                  opening=True,
+                  radius=3,
+                  min_size=64,
+                  return_cyto=False):
     """
-    
-    Grabs binary mask of nuclei from H&E RGB image using color 
-    deconvolution. 
+
+    Grabs binary mask of nuclei from H&E RGB image using color
+    deconvolution.
 
     Parameters
     ----------
 
-    image : 3D numpy array 
+    image : 3D numpy array
         H&E stained RGB image in the form [X, Y, C]
 
-    return3D : bool, 
+    return3D : bool,
         Defaults to False, return 3D version of mask
 
     return_cyto : bool
-        Defaults to False, will return a binary mask for cytoplasm from 
+        Defaults to False, will return a binary mask for cytoplasm from
         color deconvolved RGB image.
 
     Returns
@@ -843,62 +841,62 @@ def segmentNuclei(image, return3D = True,
 
     """
 
-    #separate channels
+    # separate channels
     nuclei, cyto = deconvolveColors(image)
 
-    #median filter nuclei for optimized otsu threshold
+    # median filter nuclei for optimized otsu threshold
     median_filtered_nuclei = filt.median(nuclei)
 
-    #calculate threshold and create initial binary mask
+    # calculate threshold and create initial binary mask
     threshold = filt.threshold_otsu(median_filtered_nuclei)
     binarized_nuclei = (median_filtered_nuclei > threshold).astype(int)
 
-    #remove small objects
+    # remove small objects
     labeled_mask = morph.label(binarized_nuclei)
-    shape_filtered_mask = morph.remove_small_objects(labeled_mask, 
-                                                        min_size = min_size)
+    shape_filtered_mask = morph.remove_small_objects(labeled_mask,
+                                                     min_size=min_size)
 
-    #binary opening to separate objects
+    # binary opening to separate objects
     if opening:
-        shape_filtered_mask = morph.binary_opening(shape_filtered_mask, 
-                                                        morph.disk(radius))
+        shape_filtered_mask = morph.binary_opening(shape_filtered_mask,
+                                                   morph.disk(radius))
 
-    #remove labels from nuclear mask
+    # remove labels from nuclear mask
     binary_mask = (shape_filtered_mask > 0)
 
-    #create a binary mask for cytoplasm
+    # create a binary mask for cytoplasm
     if return_cyto:
 
-        #median filter cyto for optimized otsu threshold
+        # median filter cyto for optimized otsu threshold
         median_filtered_cyto = filt.median(cyto)
 
-        #calculate threshold and create initial binary mask
+        # calculate threshold and create initial binary mask
         cyto_threshold = filt.threshold_otsu(median_filtered_cyto)
 
-        #create binary mask
+        # create binary mask
         binary_cyto = (median_filtered_cyto > cyto_threshold).astype(int)
 
-        #ensure that nuclei are segmented out of cyto mask
-        binary_cyto = binary_cyto*(binary_mask<1)
+        # ensure that nuclei are segmented out of cyto mask
+        binary_cyto = binary_cyto*(binary_mask < 1)
 
         # binary closing to remove pepper noise
         if opening:
             binary_cyto = morph.binary_closing(binary_cyto, morph.disk(radius))
 
-        #create 3D array and rearrange shape to match an RGB image
+        # create 3D array and rearrange shape to match an RGB image
         if return3D:
-            binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto, 
-                                                        binary_cyto, 
+            binary_cyto = numpy.moveaxis(numpy.asarray([binary_cyto,
+                                                        binary_cyto,
                                                         binary_cyto]), 0, -1)
 
-    #create 3D array and rearrange shape to match an RGB image
+    # create 3D array and rearrange shape to match an RGB image
     if return3D:
-        binary_mask = numpy.moveaxis(numpy.asarray([shape_filtered_mask, 
-                                                    shape_filtered_mask, 
-                                                    shape_filtered_mask]), 
-                                                    0, -1)
+        binary_mask = numpy.moveaxis(numpy.asarray([shape_filtered_mask,
+                                                    shape_filtered_mask,
+                                                    shape_filtered_mask]),
+                                     0, -1)
 
-    #return mask
+    # return mask
     if return_cyto:
         return binary_mask.astype(int), binary_cyto.astype(int)
 
@@ -907,9 +905,9 @@ def segmentNuclei(image, return3D = True,
 
 
 def maskEmpty(image_RGB,
-                    mask_val = 0.05, 
-                    return3D = True, 
-                    min_size = 150):
+              mask_val=0.05,
+              return3D=True,
+              min_size=150):
 
     """
     Method to remove white areas from RGB histology image.
@@ -921,15 +919,15 @@ def maskEmpty(image_RGB,
         RGB image in the form [X, Y, C].
 
     mask_val : float
-        Value over which pixels will be masked out of hsv image in 
+        Value over which pixels will be masked out of hsv image in
         value space.
 
     return3D : bool
-        defaults to True. If True a 3D binary mask will be returned, 
+        defaults to True. If True a 3D binary mask will be returned,
         otherwise mask is 2D.
 
     min_size : int
-        Minimum sized object for the area filter. Objects smaller than 
+        Minimum sized object for the area filter. Objects smaller than
         this threshold will be removed.
 
     Returns
@@ -939,28 +937,28 @@ def maskEmpty(image_RGB,
         Binary mask of empty spaces in an image.
     """
 
-    #convert rgb image to hsv space
-    hsv = rgb2hsv(image_RGB) 
+    # convert rgb image to hsv space
+    hsv = rgb2hsv(image_RGB)
 
-    #mask white areas
-    binary_mask = (hsv[:,:,1] < mask_val).astype(int)
+    # mask white areas
+    binary_mask = (hsv[:, :, 1] < mask_val).astype(int)
 
-    #remove small objects and fill holes
+    # remove small objects and fill holes
     labeled_mask = morph.label(binary_mask)
 
-    labeled_mask = morph.remove_small_objects(labeled_mask, 
-                                                min_size =  min_size)
+    labeled_mask = morph.remove_small_objects(labeled_mask,
+                                              min_size=min_size)
 
     labeled_mask = morph.remove_small_holes(labeled_mask)
 
     empty_mask = (labeled_mask < 1).astype(int)
 
-    #return mask
+    # return mask
     if return3D:
-        empty_mask_3D = numpy.ones(image_RGB.shape, dtype = int)
+        empty_mask_3D = numpy.ones(image_RGB.shape, dtype=int)
 
         for i in range(empty_mask_3D.shape[-1]):
-            empty_mask_3D[:,:,i] *= empty_mask
+            empty_mask_3D[:, :, i] *= empty_mask
 
         return empty_mask_3D
 
