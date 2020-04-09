@@ -271,7 +271,7 @@ def rapid_preProcess(image, background, norm_factor, output):
         Constant for subtraction.
 
     norm_factor : int
-        Empirically determaned constant for normalization after 
+        Empirically determaned constant for normalization after
         subtraction. Helps prevent saturation.
 
     output : 2d numpy array
@@ -279,37 +279,37 @@ def rapid_preProcess(image, background, norm_factor, output):
 
     Returns
     -------
-    This method requires an output array as an argument, 
+    This method requires an output array as an argument,
     the results of the compuation are stored there.
     """
 
-    #create iterator for gpu  
-    row,col = cuda.grid(2)
+    # create iterator for gpu
+    row, col = cuda.grid(2)
 
-    #cycle through image shape and assign values
+    # cycle through image shape and assign values
     if row < output.shape[0] and col < output.shape[1]:
 
-        #subtract background and raise to factor
-        tmp = image[row,col] - background
+        # subtract background and raise to factor
+        tmp = image[row, col] - background
 
-        #remove negative values
+        # remove negative values
         if tmp < 0:
-            output[row,col] = 0
+            output[row, col] = 0
 
-        #normalize to 8bit range
+        # normalize to 8bit range
         else:
             tmp = (tmp**0.85)*(65535/norm_factor)*(255/65535)
-            output[row,col] = tmp
+            output[row, col] = tmp
 
 
-def falseColor(nuclei, cyto, 
-                    output_dtype = numpy.uint8, 
-                    nuc_bg_threshold = 50, 
-                    cyto_bg_threshold = 50, 
-                    nuc_normfactor = None, 
-                    cyto_normfactor = None,
-                    color_key = 'HE',
-                    color_settings = None):
+def falseColor(nuclei, cyto,
+               output_dtype=numpy.uint8,
+               nuc_bg_threshold=50,
+               cyto_bg_threshold=50,
+               nuc_normfactor=None,
+               cyto_normfactor=None,
+               color_key='HE',
+               color_settings=None):
     """
     CPU-based two channel virtual H&E coloring using Beer's law method.
 
@@ -317,32 +317,32 @@ def falseColor(nuclei, cyto,
     Parameters
     ----------
     nuclei : 2D numpy array
-       Image of nuclear stain (hematoxylin equivalent) for false 
+       Image of nuclear stain (hematoxylin equivalent) for false
        coloring.
 
     cyto : 2D numpy array
-        Image of cytoplasm stain (eosin equivalent) or antibody for 
+        Image of cytoplasm stain (eosin equivalent) or antibody for
         false coloring.
 
     output_dtype : numpy.uint8
         output datatype for final RGB image
 
     nuc_bg_threshold : int
-        defaults to 50, threshold level for calculating nuclear 
+        defaults to 50, threshold level for calculating nuclear
         background.
 
     cyto_bg_threshold : int
-        defaults to 50, threshold level for calculating cytoplasmic 
+        defaults to 50, threshold level for calculating cytoplasmic
         background.
 
     nuc_normfactor : None or int
-        defaults to None, color saturation level for nuclear channel 
-        used in preProcess. Larger values will result in colors which 
+        defaults to None, color saturation level for nuclear channel
+        used in preProcess. Larger values will result in colors which
         are less vibrant.
 
     cyto_normfactor : None or int
-        defaults to None, color saturation level for cytoplasmic or 
-        antibody channel used in preProcess. Larger values will result 
+        defaults to None, color saturation level for cytoplasmic or
+        antibody channel used in preProcess. Larger values will result
         in colors which are less vibrant.
 
 
@@ -350,9 +350,9 @@ def falseColor(nuclei, cyto,
         defaults to HE, color settings key for getColorSettings
 
     color_settings : None or dict
-        defaults to None. Color settings for false coloring, if None 
-        color settings will be assigned by getColorSettings() with the 
-        color_key provided. If different color settings are desired the 
+        defaults to None. Color settings for false coloring, if None
+        color settings will be assigned by getColorSettings() with the
+        color_key provided. If different color settings are desired the
         keys to the dictionary should be 'nuclei' and 'cyto'.
 
 
@@ -363,52 +363,50 @@ def falseColor(nuclei, cyto,
 
     """
     beta_dict = {
-                #adjustment for nuclear channel
-                'K_nuclei' : 0.08,
+                # adjustment for nuclear channel
+                'K_nuclei': 0.08,
 
-                #adjustment for cytoplasmic channel
-                'K_cyto' : 0.0120}
+                # adjustment for cytoplasmic channel
+                'K_cyto': 0.0120}
 
-
-    #entries are lists in order of RGB constants
+    # entries are lists in order of RGB constants
     if color_settings is None:
-        color_settings = getColorSettings(key = color_key)
-
+        color_settings = getColorSettings(key=color_key)
 
     constants_nuclei = color_settings['nuclei']
     k_nuclei = beta_dict['K_nuclei']
 
     constants_cyto = color_settings['cyto']
-    k_cytoplasm= beta_dict['K_cyto']
-    
-    #execute background subtraction
+    k_cytoplasm = beta_dict['K_cyto']
+
+    # execute background subtraction
     nuclei = nuclei.astype(float)
     nuc_threshold = getBackgroundLevels(nuclei, nuc_bg_threshold)[1]
-    nuclei = preProcess(nuclei, threshold = nuc_threshold, 
-                                normfactor = nuc_normfactor)
+    nuclei = preProcess(nuclei, threshold=nuc_threshold,
+                        normfactor=nuc_normfactor)
 
     cyto = cyto.astype(float)
     cyto_threshold = getBackgroundLevels(cyto, cyto_bg_threshold)[1]
-    cyto = preProcess(cyto, threshold = cyto_threshold, 
-                            normfactor = cyto_normfactor)
+    cyto = preProcess(cyto, threshold=cyto_threshold,
+                      normfactor=cyto_normfactor)
 
-    #create array to store RGB image
-    RGB_image = numpy.zeros((3,nuclei.shape[0],nuclei.shape[1]))
+    # create array to store RGB image
+    RGB_image = numpy.zeros((3, nuclei.shape[0], nuclei.shape[1]))
 
-    #iterate throough RGB constants and execute image multiplication
+    # iterate throough RGB constants and execute image multiplication
     for i in range(len(RGB_image)):
         tmp_c = constants_cyto[i]*k_cytoplasm*cyto
         tmp_n = constants_nuclei[i]*k_nuclei*nuclei
         RGB_image[i] = 255*numpy.multiply(numpy.exp(-tmp_c), numpy.exp(-tmp_n))
 
-    #reshape to [X,Y,C]
-    RGB_image = numpy.moveaxis(RGB_image,0,-1)
+    # reshape to [X,Y,C]
+    RGB_image = numpy.moveaxis(RGB_image, 0, -1)
 
-    #rescale to 8bit range
+    # rescale to 8bit range
     return RGB_image.astype(output_dtype)
 
 
-def preProcess(image, threshold = 50, normfactor = None):
+def preProcess(image, threshold=50, normfactor=None):
     """
     Method used for background subtracting data with a fixed value
 
