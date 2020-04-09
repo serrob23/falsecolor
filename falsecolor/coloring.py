@@ -1,25 +1,25 @@
 """
 #===============================================================================
-# 
+#
 #  License: GPL
 #
 #
-#  Copyright (c) 2019 Rob Serafin, Liu Lab, 
-#  The University of Washington Department of Mechanical Engineering  
+#  Copyright (c) 2019 Rob Serafin, Liu Lab,
+#  The University of Washington Department of Mechanical Engineering
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License 2
 #  as published by the Free Software Foundation.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #   You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-# 
+#
 #===============================================================================
 
 Rob Serafin
@@ -27,61 +27,58 @@ Rob Serafin
 
 """
 
-
-import os
 import scipy.ndimage as nd
 import skimage.filters as filt
-import skimage.exposure as ex
-import skimage.util as util
 import skimage.morphology as morph
-from skimage.color import rgb2hed, rgb2hsv, hsv2rgb
+from skimage.color import rgb2hed, rgb2hsv
 import cv2
 import numpy
-from numba import cuda, njit
+from numba import cuda
 import math
 
 
-@cuda.jit #direct GPU compiling
-def rapid_getRGBframe(nuclei, cyto, output, nuc_settings, cyto_settings, 
-                        k_nuclei, k_cyto):
-    #TODO: implement array base normalization
+@cuda.jit  # direct GPU compiling
+def rapid_getRGBframe(nuclei, cyto, output,
+                      nuc_settings, cyto_settings,
+                      k_nuclei, k_cyto):
+    # TODO: implement array base normalization
     """
-    GPU based exponential false coloring operation. Used by 
+    GPU based exponential false coloring operation. Used by
     rapidFalseColor().
 
     Parameters
     ----------
-    nuclei : 2D numpy array 
+    nuclei : 2D numpy array
         dtype = float
         Nuclear channel image, already pre processed
 
     cyto : 2d numpy array
         dtype = float
         Cytoplasm channel image, already pre processed.
-        
+
     nuc_settings : float
         RGB constant for nuclear channel
-    
+
     cyto_settings : float
         RGB constant for cyto channel
 
     k_nuclei : float
-        Additional multiplicative constant for nuclear channel. 
-        Eventually will get removed once flat fielding is in place for 
+        Additional multiplicative constant for nuclear channel.
+        Eventually will get removed once flat fielding is in place for
         all pseudo coloring methods.
 
     k_cyto: float
-        Additional multiplicative constant for cytoplasmic channel. 
-        Eventually will get removed once flat fielding is in place for 
-        all pseudo coloring methods.        
+        Additional multiplicative constant for cytoplasmic channel.
+        Eventually will get removed once flat fielding is in place for
+        all pseudo coloring methods.
     """
-    row,col = cuda.grid(2)
+    row, col = cuda.grid(2)
 
-    #iterate through image and assign pixel values
+    # iterate through image and assign pixel values
     if row < output.shape[0] and col < output.shape[1]:
-        tmp = nuclei[row,col]*nuc_settings*k_nuclei + \
-                                             cyto[row,col]*cyto_settings*k_cyto
-        output[row,col] = 255*math.exp(-1*tmp)
+        tmp = nuclei[row, col]*nuc_settings*k_nuclei + \
+                                            cyto[row, col]*cyto_settings*k_cyto
+        output[row, col] = 255*math.exp(-1*tmp)
 
 
 @cuda.jit
@@ -100,49 +97,49 @@ def rapidFieldDivision(image, flat_field, output):
         result from computation
 
     """
-    row,col = cuda.grid(2)
+    row, col = cuda.grid(2)
 
     if row < output.shape[0] and col < output.shape[1]:
-        tmp = image[row,col]/flat_field[row,col]
-        output[row,col] = tmp
+        tmp = image[row, col]/flat_field[row, col]
+        output[row, col] = tmp
 
 
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
-                    TPB = (32,32), 
-                    nuc_normfactor = 8500, 
-                    cyto_normfactor = 3000,
-                    run_FlatField_nuc = False, 
-                    run_FlatField_cyto = False, 
-                    nuc_bg_threshold = 50,
-                    cyto_bg_threshold = 50):
+                    TPB=(32, 32),
+                    nuc_normfactor=8500,
+                    cyto_normfactor=3000,
+                    run_FlatField_nuc=False,
+                    run_FlatField_cyto=False,
+                    nuc_bg_threshold=50,
+                    cyto_bg_threshold=50):
     """
     Parameters
     ----------
 
     nuclei : numpy array
         Nuclear channel image.
-        
+
     cyto : numpy array
         Cytoplasm channel image.
-        
+
     nuc_settings : list
-        Settings of RGB constants for nuclear channel. Should be in 
+        Settings of RGB constants for nuclear channel. Should be in
         order R, G, B.
-    
+
     cyto_settings : list
-        Settings of RGB constants for cytoplasm channel. Should be in 
+        Settings of RGB constants for cytoplasm channel. Should be in
         order R, G, B.
 
     nuc_normfactor : int or array
-        Defaults to empirically determined constant to reduce 
-        saturation. Otherwise it should be a numpy array representing 
+        Defaults to empirically determined constant to reduce
+        saturation. Otherwise it should be a numpy array representing
         the true flat field image.
 
     cyto_normfactor : int or array
-        Defaults to empirically determined constant to reduce 
-        saturation. Otherwise it should be a numpy array representing 
+        Defaults to empirically determined constant to reduce
+        saturation. Otherwise it should be a numpy array representing
         the true flat field image.
-        
+
     TPB : tuple (int,int)
         THREADS PER BLOCK: (x_threads,y_threads) used for GPU threads.
 
@@ -150,11 +147,11 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         defaults to False, boolean to apply flatfield
 
     nuc_bg_threshold = int
-        defaults to 50, threshold level for calculating nuclear 
+        defaults to 50, threshold level for calculating nuclear
         background.
 
     cyto_bg_threshold = int
-        defaults to 50, threshold level for calculating cytoplasmic 
+        defaults to 50, threshold level for calculating cytoplasmic
         background.
 
 
@@ -162,101 +159,104 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     Returns
     -------
     RGB_image : 3D numpy array
-        Combined false colored image in the standard RGB format 
+        Combined false colored image in the standard RGB format
         [X, Y, C].
 
     """
 
-    #ensure float dtype
+    # ensure float dtype
     nuclei = nuclei.astype(float)
     cyto = cyto.astype(float)
 
-    #set mulciplicative constants
+    # set mulciplicative constants
     k_nuclei = 1.0
     k_cyto = 1.0
 
-    #create blockgrid for gpu
+    # create blockgrid for gpu
     blockspergrid_x = int(math.ceil(nuclei.shape[0] / TPB[0]))
     blockspergrid_y = int(math.ceil(nuclei.shape[1] / TPB[1]))
     blockspergrid = (blockspergrid_x, blockspergrid_y)
-    
-    #allocate memory for background subtraction
+
+    # allocate memory for background subtraction
     nuclei = numpy.ascontiguousarray(nuclei)
     pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape))
     nuc_global_mem = cuda.to_device(nuclei)
 
-    #run background subtraction or normalization for nuclei
+    # run background subtraction or normalization for nuclei
 
-    #use flat fielding
+    # use flat fielding
     if run_FlatField_nuc:
         nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         nuc_norm_mem = cuda.to_device(nuc_normfactor)
 
-        rapidFieldDivision[blockspergrid,TPB](nuc_global_mem, nuc_norm_mem, 
-                                                                pre_nuc_output)
+        rapidFieldDivision[blockspergrid, TPB](nuc_global_mem, nuc_norm_mem,
+                                               pre_nuc_output)
 
-    #otherwise use standard background subtraction
+    # otherwise use standard background subtraction
     else:
         k_nuclei = 0.08
-        nuc_background = getBackgroundLevels(nuclei, 
-                                            threshold = nuc_bg_threshold)[1]
+        nuc_background = getBackgroundLevels(nuclei,
+                                             threshold=nuc_bg_threshold)[1]
 
-        rapid_preProcess[blockspergrid,TPB](nuc_global_mem,nuc_background,
-                                                nuc_normfactor,pre_nuc_output)
-    
-    #allocate memory for background subtraction
+        rapid_preProcess[blockspergrid, TPB](nuc_global_mem, nuc_background,
+                                             nuc_normfactor, pre_nuc_output)
+
+    # allocate memory for background subtraction
     cyto = numpy.ascontiguousarray(cyto)
     pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
     cyto_global_mem = cuda.to_device(cyto)
 
-    #run background subtraction or normalization for cyto
+    # run background subtraction or normalization for cyto
 
-    #use flat fielding
+    # use flat fielding
     if run_FlatField_cyto:
         cyto_normfactor = numpy.ascontiguousarray(cyto_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
-        rapidFieldDivision[blockspergrid,TPB](cyto_global_mem, 
-                                                cyto_norm_mem, pre_cyto_output)
+        rapidFieldDivision[blockspergrid, TPB](cyto_global_mem,
+                                               cyto_norm_mem, pre_cyto_output)
 
     # otherwise use standard background subtraction
     else:
         k_cyto = 0.012
-        cyto_background = getBackgroundLevels(cyto, 
-                                            threshold = cyto_bg_threshold)[1]
-        rapid_preProcess[blockspergrid,TPB](cyto_global_mem, 
-                                                cyto_background,
-                                                cyto_normfactor, 
-                                                pre_cyto_output)
-    
-    #create output array to iterate through
+        cyto_background = getBackgroundLevels(cyto,
+                                              threshold=cyto_bg_threshold)[1]
+
+        rapid_preProcess[blockspergrid, TPB](cyto_global_mem,
+                                             cyto_background,
+                                             cyto_normfactor,
+                                             pre_cyto_output)
+
+    # create output array to iterate through
     output_global = cuda.to_device(numpy.zeros((3,
-                                                nuclei.shape[0],
-                                                nuclei.shape[1]), 
-                                                dtype = numpy.uint8))
+                                               nuclei.shape[0],
+                                               nuclei.shape[1]),
+                                               dtype=numpy.uint8))
 
-    #allocate memory on GPU
+    # allocate memory on GPU
     nuclei_global = cuda.to_device(pre_nuc_output)
-    cyto_global = cuda.to_device(pre_cyto_output)                  
+    cyto_global = cuda.to_device(pre_cyto_output)
 
-    #iterate through output and assign values based on RGB settings
-    for i,z in enumerate(output_global):
+    # iterate through output and assign values based on RGB settings
+    for i, z in enumerate(output_global):
 
-        #get 8bit frame
-        rapid_getRGBframe[blockspergrid,TPB](nuclei_global, 
-                                            cyto_global, 
-                                            z,
-                                            nuc_settings[i], 
-                                            cyto_settings[i],
-                                            k_nuclei, k_cyto)
-        
+        # get 8bit frame
+        rapid_getRGBframe[blockspergrid, TPB](nuclei_global,
+                                              cyto_global,
+                                              z,
+                                              nuc_settings[i],
+                                              cyto_settings[i],
+                                              k_nuclei,
+                                              k_cyto)
+
     RGB_image = output_global.copy_to_host()
 
-    #reorder array to dimmensional form [X,Y,C]
-    RGB_image = numpy.moveaxis(RGB_image,0,-1)
+    # reorder array to dimmensional form [X,Y,C]
+    RGB_image = numpy.moveaxis(RGB_image, 0, -1)
+
     return RGB_image.astype(numpy.uint8)
 
 
-@cuda.jit #direct GPU compiling
+@cuda.jit  # direct GPU compiling
 def rapid_preProcess(image, background, norm_factor, output):
     """
     Background subtraction optimized for GPU, used by rapidFalseColor.
