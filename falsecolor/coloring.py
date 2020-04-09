@@ -239,7 +239,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     # iterate through output and assign values based on RGB settings
     for i, z in enumerate(output_global):
 
-        # get 8bit frame
+        # get color frame
         rapid_getRGBframe[blockspergrid, TPB](nuclei_global,
                                               cyto_global,
                                               z,
