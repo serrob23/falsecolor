@@ -517,6 +517,9 @@ def sharpenImage(input_image, alpha=0.5):
     Convolve2d[grid, blocks](input_image, vkernel, voutput)
     Convolve2d[grid, blocks](input_image, hkernel, houtput)
 
+    voutput = voutput.copy_to_host()
+    houtput = houtput.copy_to_host()
+
     # calculate final result
     final_image = input_image + alpha*numpy.sqrt(voutput**2 + houtput**2)
 
