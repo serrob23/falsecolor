@@ -179,7 +179,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     # allocate memory for background subtraction
     nuclei = numpy.ascontiguousarray(nuclei)
-    pre_nuc_output = cuda.to_device(numpy.zeros(nuclei.shape))
+    pre_nuc_output = cuda.device_array(nuclei.shape)
     nuc_global_mem = cuda.to_device(nuclei)
 
     # run background subtraction or normalization for nuclei
@@ -203,7 +203,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
     # allocate memory for background subtraction
     cyto = numpy.ascontiguousarray(cyto)
-    pre_cyto_output = cuda.to_device(numpy.zeros(cyto.shape))
+    pre_cyto_output = cuda.device_array(cyto.shape)
     cyto_global_mem = cuda.to_device(cyto)
 
     # run background subtraction or normalization for cyto
@@ -521,8 +521,8 @@ def sharpenImage(input_image, alpha=0.5):
 
     # run convolution
     input_image = numpy.ascontiguousarray(input_image)
-    voutput = numpy.zeros(input_image.shape, dtype=numpy.float64)
-    houtput = numpy.zeros(input_image.shape, dtype=numpy.float64)
+    voutput = cuda.device_array(input_image.shape, dtype=numpy.float64)
+    houtput = cuda.device_array(input_image.shape, dtype=numpy.float64)
     Convolve2d[grid, blocks](input_image, vkernel, voutput)
     Convolve2d[grid, blocks](input_image, hkernel, houtput)
 
