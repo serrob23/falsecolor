@@ -203,7 +203,6 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         rapid_preProcess[blockspergrid, TPB](nuc_global_mem, nuc_background,
                                              nuc_normfactor, pre_nuc_output)
 
-
     # run background subtraction or normalization for cyto
 
     # use intensity leveling
@@ -225,7 +224,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                                              pre_cyto_output)
 
     # create output array to iterate through
-    output_global = cuda.device_array((3,nuclei.shape[0],nuclei.shape[1]),
+    output_global = cuda.device_array((3, nuclei.shape[0], nuclei.shape[1]),
                                       dtype=numpy.uint8)
 
     # iterate through output and assign values based on RGB settings
