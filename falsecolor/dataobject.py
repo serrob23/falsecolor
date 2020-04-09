@@ -1,25 +1,25 @@
 """
 #===============================================================================
-# 
+#
 #  License: GPL
 #
 #
-#  Copyright (c) 2019 Rob Serafin, Liu Lab, 
-#  The University of Washington Department of Mechanical Engineering  
+#  Copyright (c) 2019 Rob Serafin, Liu Lab,
+#  The University of Washington Department of Mechanical Engineering
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License 2
 #  as published by the Free Software Foundation.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #   You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-# 
+#
 #===============================================================================
 
 Rob Serafin
@@ -32,45 +32,44 @@ from skimage.io import imread
 import numpy
 from pathos.multiprocessing import ProcessingPool
 import h5py as hp
-import falsecolor.coloring as fc
+
 
 class DataObject(object):
-    def __init__(self, directory, imageSet = None,
-                 setupPool = False, ncpus = 2, tissue_type = 'Default'):
+    def __init__(self, directory, imageSet=None,
+                 setupPool=False, ncpus=2, tissue_type='Default'):
         """
-        Object to store image data in a convienient way for batch 
+        Object to store image data in a convienient way for batch
         processing.
-        
+
         Attributes
         ----------
-        
+
         directory : string or pathlike
             Base directory where image data is stored
-            
+
         imageSet : 3d numpy array
             images for processing
-        
+
         setupPool : bool
             setup processing pool
-        
+
         """
-        
+
         # object base directory
         self.directory = directory
 
-        #object data to process
+        # object data to process
         self.imageSet = imageSet
-        
-        #dedicated cpus
+
+        # dedicated cpus
         if setupPool:
-            self.setupProcessing(ncpus = ncpus)
+            self.setupProcessing(ncpus=ncpus)
         else:
             self.unloadPool()
 
-        #Tissue type for RGB settings
+        # Tissue type for RGB settings
         self.tissue = tissue_type
-                
-    
+
     def loadImages(self, file_list):
         """
         Loads list of images and returns as a 3D numpy array
@@ -78,7 +77,7 @@ class DataObject(object):
         Parameters
         ----------
 
-        file_list : list 
+        file_list : list
             List of filepaths to be read into memory
 
         Returns
@@ -86,19 +85,19 @@ class DataObject(object):
 
         images : numpy array
             Image data read into memory
-        """          
-        
+        """
+
         file_list = sorted(file_list)
         images = []
 
         for item in file_list:
             images.append(imread(item))
 
-        return np.asarray(images)
-            
-    def loadH5(self, folder, dataID, 
-                            channelIDs = ['s00', 's01'],
-                            start_index = 0, stop_index = 0):
+        return numpy.asarray(images)
+
+    def loadH5(self, folder, dataID,
+               channelIDs=['s00', 's01'],
+               start_index=0, stop_index=0):
 
         """
         Parameters
@@ -112,12 +111,12 @@ class DataObject(object):
 
         channelIDs : list
             keys for data entry for HDF5
-            
+
         start_index : int
             Index to begin reading data from, defaults to zero.
 
         stop_index : int
-            Index to stop reading data from, if zero will continue 
+            Index to stop reading data from, if zero will continue
             through the entire dataset.
 
         Returns
@@ -130,9 +129,9 @@ class DataObject(object):
             Second channel image data from HDF5 file
         """
 
-        data_name = [os.path.join(folder, f) for f in os.listdir(folder) \
-                                                         if f.endswith('h5')]
-        
+        data_name = [os.path.join(folder, f) for f in os.listdir(folder)
+                     if f.endswith('h5')]
+
         if start_index == stop_index:
 
             with hp.File(data_name[0], 'r') as f:
@@ -148,10 +147,10 @@ class DataObject(object):
             f.close()
 
         return nuclei, cyto
-        
-    def setupH5data(self, folder = None, dataID = 0,
-                            channelIDs = ['s00','s01'],
-                            start_index = 0, stop_index = 0):
+
+    def setupH5data(self, folder=None, dataID=0,
+                    channelIDs=['s00', 's01'],
+                    start_index=0, stop_index=0):
 
         """
         Sets up two channel H5 dataset with default key entries
@@ -160,7 +159,7 @@ class DataObject(object):
         ----------
 
         folder : str or pathlike
-            Folder to grab image data from, defaults to None. If None 
+            Folder to grab image data from, defaults to None. If None
             DataObject will use self.directory.
 
         dataID : int
@@ -173,7 +172,7 @@ class DataObject(object):
             Index to begin reading data from, defaults to zero.
 
         stop_index : int
-            Index to stop reading data from, if zero will continue 
+            Index to stop reading data from, if zero will continue
             through the entire dataset.
 
 
@@ -181,36 +180,35 @@ class DataObject(object):
         -------
 
         dataset : tuple
-            Image data read from HDF5, in the order 
-            (channel1_data, channel2_data), where each entry is a numpy 
+            Image data read from HDF5, in the order
+            (channel1_data, channel2_data), where each entry is a numpy
             array of image data.
 
         """
         if folder:
-            dataset = self.loadH5(folder, dataID = dataID, 
-                                                    channelIDs = channelIDs)
+            dataset = self.loadH5(folder, dataID=dataID,
+                                  channelIDs=channelIDs)
 
         else:
-            dataset = self.loadH5(self.directory, dataID = dataID, 
-                                                    channelIDs = channelIDs)
+            dataset = self.loadH5(self.directory, dataID=dataID,
+                                  channelIDs=channelIDs)
 
         self.imageSet = numpy.asarray(dataset)
-        
-    
-    def setupProcessing(self,ncpus):
+
+    def setupProcessing(self, ncpus):
         """
         Creates processing pool with specified ncpus for DataObject.
 
         Parameters
         ----------
-        
+
         ncpus : int
             Number of cpu cores for processing pool
 
         """
 
         self.pool = ProcessingPool(ncpus=ncpus)
-        
+
     def unloadPool(self):
         """
         Turns off processing pool.
@@ -222,55 +220,55 @@ class DataObject(object):
         -------
         """
         self.pool = None
-    
-    def processImages(self,runnable_dict, imageSet, dtype = None):
-            """
-            Method to batch process multiple images simultaneously. Can 
-            process multiple channels or one at a time. Method acts on 
-            Image data within data object. 
 
-            Parameters
-            -------
-            
-            runnable_dict : dict
-            Dictionary with the following key, value pairs:
+    def processImages(self, runnable_dict, imageSet, dtype=None):
+        """
+        Method to batch process multiple images simultaneously. Can
+        process multiple channels or one at a time. Method acts on
+        Image data within data object.
 
-                'runnable' : method to run by processingpool.map
+        Parameters
+        -------
 
-                'kwargs' : key word arguments for method
+        runnable_dict : dict
+        Dictionary with the following key, value pairs:
 
-            imageSet : numpy array
-                Image data of 3 or more dimmensions, should be in the 
-                shape [[Z1, X1, Y1], [Z2, X2, Y2], ...etc].
+            'runnable' : method to run by processingpool.map
 
-            dtype : None or datatype
-                Defaults to None type, if not none data will be returned 
-                as specified type. 
+            'kwargs' : key word arguments for method
 
-            Returns 
-            -------
+        imageSet : numpy array
+            Image data of 3 or more dimmensions, should be in the
+            shape [[Z1, X1, Y1], [Z2, X2, Y2], ...etc].
 
-            processed_images : numpy array
-                Images which have been procesed using the 
-                runnable_dict's method. 
-            
-            """
-            if self.pool is None:
-                self.setupProcessing(ncpus = 4)
-            
-            func,kwargs = runnable_dict['runnable'],runnable_dict['kwargs']
- 
-            processed_images = []
+        dtype : None or datatype
+            Defaults to None type, if not none data will be returned
+            as specified type.
 
-            if type(kwargs) == dict:
-                processed_images.append(self.pool.map(func, *imageSet, 
-                                                                **kwargs))
-            
-            else:
-                processed_images.append(self.pool.map(func, *imageSet))
+        Returns
+        -------
 
-            if dtype is None:
-                return numpy.asarray(processed_images)[0]
-                            
-            else:
-                return numpy.asarray(processed_images, dtype = dtype)[0]
+        processed_images : numpy array
+            Images which have been procesed using the
+            runnable_dict's method.
+
+        """
+        if self.pool is None:
+            self.setupProcessing(ncpus=4)
+
+        func, kwargs = runnable_dict['runnable'], runnable_dict['kwargs']
+
+        processed_images = []
+
+        if type(kwargs) == dict:
+            processed_images.append(self.pool.map(func, *imageSet,
+                                                  **kwargs))
+
+        else:
+            processed_images.append(self.pool.map(func, *imageSet))
+
+        if dtype is None:
+            return numpy.asarray(processed_images)[0]
+
+        else:
+            return numpy.asarray(processed_images, dtype=dtype)[0]

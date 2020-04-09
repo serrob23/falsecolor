@@ -1,25 +1,25 @@
 """
 #===============================================================================
-# 
+#
 #  License: GPL
 #
 #
-#  Copyright (c) 2019 Rob Serafin, Liu Lab, 
-#  The University of Washington Department of Mechanical Engineering  
+#  Copyright (c) 2019 Rob Serafin, Liu Lab,
+#  The University of Washington Department of Mechanical Engineering
 #
 #  This program is free software; you can redistribute it and/or
 #  modify it under the terms of the GNU General Public License 2
 #  as published by the Free Software Foundation.
-# 
+#
 #  This program is distributed in the hope that it will be useful,
 #  but WITHOUT ANY WARRANTY; without even the implied warranty of
 #  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #  GNU General Public License for more details.
-# 
+#
 #   You should have received a copy of the GNU General Public License
 #  along with this program; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
-# 
+#
 #===============================================================================
 
 Rob Serafin
@@ -27,10 +27,7 @@ Rob Serafin
 
 """
 import os
-import tifffile as tif
-import numpy
 from skimage import io
-import time
 
 
 def saveProcess(queue):
@@ -40,12 +37,12 @@ def saveProcess(queue):
 
     queue : multiprocessing queue
 
-        message : result of queue.get(), has the following properties in 
+        message : result of queue.get(), has the following properties in
         this order:
 
                 path : str or pathlike
                     top level storage directory for data
-                
+
                 folder : str
                     specific dir to save data in
 
@@ -60,7 +57,7 @@ def saveProcess(queue):
 
                 token : None or str
                     token will be a str when thread stop is called
-    
+
     Returns
     -------
     """
@@ -72,26 +69,16 @@ def saveProcess(queue):
             break
 
         else:
-            (path,folder,filename,data,token) = message
+            (path, folder, filename, data, token) = message
 
-            storage_dir = os.path.join(path,folder)
+            storage_dir = os.path.join(path, folder)
 
             if not os.path.exists(storage_dir):
                 os.mkdir(storage_dir)
 
-            file_savename = os.path.join(storage_dir,filename)
-            print(storage_dir,filename)
+            file_savename = os.path.join(storage_dir, filename)
+            print(storage_dir, filename)
 
-            if file_savename.endswith('tif'):
-                t0 = time.time()
-                tif.imsave(file_savename,data)
-                print('save time: ', time.time() - t0)
-
-            else:
-                t0 = time.time()
-                io.imsave(file_savename,data)
-                print('save time: ', time.time() - t0)
+            io.imsave(file_savename, data)
 
             message = None
-
-
