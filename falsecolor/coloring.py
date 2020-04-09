@@ -165,8 +165,8 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     """
 
     # ensure float dtype
-    nuclei = nuclei.astype(float)
-    cyto = cyto.astype(float)
+    nuclei = numpy.ascontiguousarray(nuclei, dtype=float)
+    cyto = numpy.ascontiguousarray(cyto, dtype=float)
 
     # set mulciplicative constants
     k_nuclei = 1.0
@@ -178,13 +178,15 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     blockspergrid = (blockspergrid_x, blockspergrid_y)
 
     # allocate memory for background subtraction
-    nuclei = numpy.ascontiguousarray(nuclei)
     pre_nuc_output = cuda.device_array(nuclei.shape)
     nuc_global_mem = cuda.to_device(nuclei)
 
+    pre_cyto_output = cuda.device_array(cyto.shape)
+    cyto_global_mem = cuda.to_device(cyto)
+
     # run background subtraction or normalization for nuclei
 
-    # use flat fielding
+    # use intensity leveling
     if run_FlatField_nuc:
         nuc_normfactor = numpy.ascontiguousarray(nuc_normfactor)
         nuc_norm_mem = cuda.to_device(nuc_normfactor)
@@ -201,14 +203,10 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         rapid_preProcess[blockspergrid, TPB](nuc_global_mem, nuc_background,
                                              nuc_normfactor, pre_nuc_output)
 
-    # allocate memory for background subtraction
-    cyto = numpy.ascontiguousarray(cyto)
-    pre_cyto_output = cuda.device_array(cyto.shape)
-    cyto_global_mem = cuda.to_device(cyto)
 
     # run background subtraction or normalization for cyto
 
-    # use flat fielding
+    # use intensity leveling
     if run_FlatField_cyto:
         cyto_normfactor = numpy.ascontiguousarray(cyto_normfactor)
         cyto_norm_mem = cuda.to_device(cyto_normfactor)
@@ -227,21 +225,15 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                                              pre_cyto_output)
 
     # create output array to iterate through
-    output_global = cuda.to_device(numpy.zeros((3,
-                                               nuclei.shape[0],
-                                               nuclei.shape[1]),
-                                               dtype=numpy.uint8))
-
-    # allocate memory on GPU
-    nuclei_global = cuda.to_device(pre_nuc_output)
-    cyto_global = cuda.to_device(pre_cyto_output)
+    output_global = cuda.device_array((3,nuclei.shape[0],nuclei.shape[1]),
+                                      dtype=numpy.uint8)
 
     # iterate through output and assign values based on RGB settings
     for i, z in enumerate(output_global):
 
         # get color frame
-        rapid_getRGBframe[blockspergrid, TPB](nuclei_global,
-                                              cyto_global,
+        rapid_getRGBframe[blockspergrid, TPB](pre_nuc_output,
+                                              pre_cyto_output,
                                               z,
                                               nuc_settings[i],
                                               cyto_settings[i],
