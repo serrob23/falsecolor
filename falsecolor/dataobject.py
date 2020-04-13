@@ -32,6 +32,7 @@ from skimage.io import imread
 import numpy
 from pathos.multiprocessing import ProcessingPool
 import h5py as hp
+from functools import partial
 
 
 class DataObject(object):
@@ -256,16 +257,19 @@ class DataObject(object):
         if self.pool is None:
             self.setupProcessing(ncpus=4)
 
-        func, kwargs = runnable_dict['runnable'], runnable_dict['kwargs']
+        
 
         processed_images = []
 
-        if type(kwargs) == dict:
-            processed_images.append(self.pool.map(func, *imageSet,
-                                                  **kwargs))
+        if type(runnable_dict['kwargs']) == dict:
+            func = partial(runnable_dict['runnable'], 
+                           **runnable_dict['kwargs'])
 
         else:
-            processed_images.append(self.pool.map(func, *imageSet))
+            func = runnable_dict['runnable']
+            
+            
+        processed_images.append(self.pool.map(func, *imageSet))
 
         if dtype is None:
             return numpy.asarray(processed_images)[0]
