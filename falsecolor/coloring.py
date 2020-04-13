@@ -295,8 +295,8 @@ def rapidPreProcess(image, background, norm_factor, output):
 
 def falseColor(nuclei, cyto,
                output_dtype=numpy.uint8,
-               nuc_bg_threshold=50,
-               cyto_bg_threshold=50,
+               nuc_threshold=50,
+               cyto_threshold=50,
                nuc_normfactor=5000,
                cyto_normfactor=2000,
                color_key='HE',
