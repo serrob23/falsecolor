@@ -38,7 +38,7 @@ import math
 
 
 @cuda.jit  # direct GPU compiling
-def rapid_getRGBframe(nuclei, cyto, output,
+def rapidGetRGBframe(nuclei, cyto, output,
                       nuc_settings, cyto_settings,
                       k_nuclei, k_cyto):
     # TODO: implement array base normalization
@@ -200,7 +200,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         nuc_background = getBackgroundLevels(nuclei,
                                              threshold=nuc_bg_threshold)[1]
 
-        rapid_preProcess[blockspergrid, TPB](nuc_global_mem, nuc_background,
+        rapidPreProcess[blockspergrid, TPB](nuc_global_mem, nuc_background,
                                              nuc_normfactor, pre_nuc_output)
 
     # run background subtraction or normalization for cyto
@@ -218,7 +218,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
         cyto_background = getBackgroundLevels(cyto,
                                               threshold=cyto_bg_threshold)[1]
 
-        rapid_preProcess[blockspergrid, TPB](cyto_global_mem,
+        rapidPreProcess[blockspergrid, TPB](cyto_global_mem,
                                              cyto_background,
                                              cyto_normfactor,
                                              pre_cyto_output)
@@ -231,13 +231,13 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
     for i, z in enumerate(output_global):
 
         # get color frame
-        rapid_getRGBframe[blockspergrid, TPB](pre_nuc_output,
-                                              pre_cyto_output,
-                                              z,
-                                              nuc_settings[i],
-                                              cyto_settings[i],
-                                              k_nuclei,
-                                              k_cyto)
+        rapidGetRGBframe[blockspergrid, TPB](pre_nuc_output,
+                                             pre_cyto_output,
+                                             z,
+                                             nuc_settings[i],
+                                             cyto_settings[i],
+                                             k_nuclei,
+                                             k_cyto)
 
     RGB_image = output_global.copy_to_host()
 
@@ -248,7 +248,7 @@ def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
 
 
 @cuda.jit  # direct GPU compiling
-def rapid_preProcess(image, background, norm_factor, output):
+def rapidPreProcess(image, background, norm_factor, output):
     """
     Background subtraction optimized for GPU, used by rapidFalseColor.
 
