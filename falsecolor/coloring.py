@@ -107,7 +107,7 @@ def rapidFieldDivision(image, flat_field, output):
 def rapidFalseColor(nuclei, cyto, nuc_settings, cyto_settings,
                     TPB=(32, 32),
                     nuc_normfactor=8500,
-                    cyto_normfactor=3000,
+                    cyto_normfactor=2000,
                     run_FlatField_nuc=False,
                     run_FlatField_cyto=False,
                     nuc_bg_threshold=50,
@@ -297,8 +297,8 @@ def falseColor(nuclei, cyto,
                output_dtype=numpy.uint8,
                nuc_bg_threshold=50,
                cyto_bg_threshold=50,
-               nuc_normfactor=None,
-               cyto_normfactor=None,
+               nuc_normfactor=5000,
+               cyto_normfactor=2000,
                color_key='HE',
                color_settings=None):
     """
@@ -372,12 +372,10 @@ def falseColor(nuclei, cyto,
 
     # execute background subtraction
     nuclei = nuclei.astype(float)
-    nuc_threshold = getBackgroundLevels(nuclei, nuc_bg_threshold)[1]
     nuclei = preProcess(nuclei, threshold=nuc_threshold,
                         normfactor=nuc_normfactor)
 
     cyto = cyto.astype(float)
-    cyto_threshold = getBackgroundLevels(cyto, cyto_bg_threshold)[1]
     cyto = preProcess(cyto, threshold=cyto_threshold,
                       normfactor=cyto_normfactor)
 
