@@ -112,8 +112,8 @@ def main():
     M_nuc = fc.getIntensityMap(nuclei_ds)
     M_cyto = fc.getIntensityMap(cyto_ds)
 
-    bkg_nuc = fc.getBackgroundLevels(nuclei_ds)
-    bkg_cyto = fc.getBackgroundLevels(cyto_ds)
+    bkg_nuc = fc.getBackgroundLevels(nuclei_ds)[1]
+    bkg_cyto = fc.getBackgroundLevels(cyto_ds)[1]
 
     dataQueue = mp.Queue()
     save_thread = mp.Process(target=saveProcess, args=[dataQueue])
