@@ -34,7 +34,7 @@ Several methods within color.py are setup with GPU acceleration using numba.cuda
 ```python
 import falseColor.coloring as fc
 #Using Defaults:
-settings_dict = fc.fc.getColorSettings(key = 'HE')
+settings_dict = fc.getColorSettings(key = 'HE')
 nuclei_RGBsettings = settings_dict['nuclei']
 cyto_RGBsettings = settings_dict['cyto']
 ```
